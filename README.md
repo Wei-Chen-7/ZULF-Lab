@@ -18,11 +18,29 @@ python zulf_nmr.py
 ```
 
 An interactive window opens with live sliders for **J**, **leading field B_z**, and
-**T2**, a spin-system selector (XH / XH2 / XH3), and a **Play** button that animates
-the FID building up. A static snapshot of the default state is always written to
-`zulf_demo.png` (so it also works headless).
+**T2**, a **spin-system selector**, a **relaxation-model toggle**, and a **Play**
+button that animates the FID building up. A static snapshot of the default state is
+always written to `zulf_demo.png` (so it also works headless).
 
 ![demo](zulf_demo.png)
+
+### Spin systems
+
+Two heteronuclear families, all ≤ 4 spins (Hilbert dimension ≤ 16): a **¹³C**
+series (`XH`, `XH2`, `XH3`) and a **¹⁵N** series (`15NH`, `15NH2`, `15NH3`). They
+share the same zero-field line pattern but behave differently in the ULF crossover
+— ¹⁵N has a much smaller, *negative* gyromagnetic ratio, so its lines shift the
+other way as B_z grows.
+
+### Relaxation model (live toggle)
+
+- **`exp(-t/T2)`** — fast phenomenological envelope; every line gets width ≈ 1/(πT2).
+- **`Lindblad`** — a proper dissipative superoperator with independent transverse
+  dephasing on each spin (collapse operators `√(2/T2)·Iᵢᶻ`). The Liouvillian is
+  diagonalized once and the signal is summed over its damped eigenmodes, so
+  linewidths *emerge from the model* and differ line-to-line (more dephasing spins
+  ⇒ broader line). Instant for the 2–3 spin systems; ~75 ms/update for the 4-spin
+  (dim-16) ones, since it diagonalizes a 256×256 matrix.
 
 ## Physics, in brief
 

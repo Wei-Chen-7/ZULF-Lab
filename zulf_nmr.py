@@ -15,10 +15,11 @@ products -> Hamiltonian -> propagation by diagonalization -> FFT.
 
 Run it:
     python zulf_nmr.py
-An interactive Matplotlib window opens with live sliders for J, B_z and T2,
-plus a spin-system selector and a "Play" button that animates the FID. A
-static snapshot of the default state is always written to ``zulf_demo.png`` so
-the result is verifiable even in a headless run.
+An interactive Matplotlib window opens with live sliders for J, B_z and T2, a
+spin-system selector (13C and 15N families, XH .. XH3), a relaxation-model toggle
+(phenomenological exp(-t/T2) vs a proper Lindblad superoperator), and a "Play"
+button that animates the FID. A static snapshot of the default state is always
+written to ``zulf_demo.png`` so the result is verifiable even in a headless run.
 
 ----------------------------------------------------------------------------
 UNITS & THE ALL-IMPORTANT 2*pi
@@ -63,9 +64,18 @@ from matplotlib.widgets import Slider, Button, RadioButtons  # noqa: E402
 # ===========================================================================
 # Gyromagnetic ratios gamma / 2*pi, in MHz/T. With B_z expressed in microtesla
 # this gives the Larmor frequency conveniently as nu[Hz] = gamma[MHz/T] * B[uT]
-# (e.g. 1H at 1 uT -> 42.577 Hz, 13C at 1 uT -> 10.7084 Hz).
-GAMMA = {"1H": 42.577, "13C": 10.7084}  # MHz/T
-GAMMA_H = GAMMA["1H"]
+# (e.g. 1H at 1 uT -> 42.577 Hz, 13C at 1 uT -> 10.7084 Hz). Note 15N is
+# negative -- its spins precess the opposite way, which shows up in the ULF
+# crossover even though it leaves the zero-field line positions unchanged.
+NUCLEI = {
+    "1H": 42.577,
+    "13C": 10.7084,
+    "15N": -4.316,
+    "19F": 40.078,
+    "31P": 17.235,
+}
+GAMMA = NUCLEI          # backwards-compatible alias
+GAMMA_H = NUCLEI["1H"]
 
 # Time grid: dt = 0.5 ms, T = 3 s  ->  Nyquist = 1000 Hz, df ~ 0.33 Hz.
 DT = 0.5e-3
@@ -109,15 +119,23 @@ def spin_op(i, k, n):
 # ===========================================================================
 # 2. SPIN SYSTEM + HAMILTONIAN
 # ===========================================================================
-# Each preset is one 13C ("X") coupled to n equivalent 1H, the canonical ZULF
-# building blocks. The H-H couplings are left at zero: equivalent protons are
-# magnetically equivalent, so a mutual J only shifts whole spin manifolds and
-# does not move the observed lines -- omitting it keeps the model clean.
+# Each preset is one heteronucleus ("X", site 0) coupled to n equivalent 1H,
+# the canonical ZULF building blocks. The H-H couplings are left at zero:
+# equivalent protons are magnetically equivalent, so a mutual J only shifts
+# whole spin manifolds and does not move the observed lines -- omitting it keeps
+# the model clean. The two families (13C and 15N) share the same zero-field line
+# pattern but behave differently in the ULF crossover (very different Larmor
+# rates, and 15N precesses with the opposite sign). All systems are <= 4 spins
+# (Hilbert dim <= 16) so the Lindblad superoperator stays small and fast.
 SYSTEMS = {
-    "XH":  [GAMMA["13C"], GAMMA["1H"]],
-    "XH2": [GAMMA["13C"], GAMMA["1H"], GAMMA["1H"]],
-    "XH3": [GAMMA["13C"], GAMMA["1H"], GAMMA["1H"], GAMMA["1H"]],
+    "XH":    ["13C", "1H"],                 # 13C-1H, the ZULF "hello world"
+    "XH2":   ["13C", "1H", "1H"],           # methylene-like (line at 1.5 J)
+    "XH3":   ["13C", "1H", "1H", "1H"],     # methyl (lines at J and 2J)
+    "15NH":  ["15N", "1H"],                 # amide-like, slow/negative-gamma X
+    "15NH2": ["15N", "1H", "1H"],           # amine-like
+    "15NH3": ["15N", "1H", "1H", "1H"],     # ammonia
 }
+SYSTEM_NAMES = list(SYSTEMS)
 
 
 class SpinSystem:
@@ -131,10 +149,11 @@ class SpinSystem:
 
     def __init__(self, name):
         self.name = name
-        self.gammas = np.array(SYSTEMS[name], dtype=float)  # MHz/T, site 0 = 13C
-        self.n = len(self.gammas)
+        self.nuclei = list(SYSTEMS[name])                   # e.g. ["13C","1H","1H"]
+        self.gammas = np.array([NUCLEI[x] for x in self.nuclei], float)  # MHz/T
+        self.n = len(self.gammas)                           # site 0 is the X nucleus
         self.dim = 2 ** self.n
-        # Couple site 0 (the X = 13C) to every proton with the same J.
+        # Couple site 0 (the heteronucleus X) to every proton with the same J.
         self.pairs = [(0, j) for j in range(1, self.n)]
 
         # Precompute the Cartesian spin operators for each site once.
@@ -260,31 +279,84 @@ def zero_field_lines(n_protons, J):
 # ===========================================================================
 # 4. (STRETCH) PROPER LINDBLAD RELAXATION SUPEROPERATOR
 # ===========================================================================
-# Scaffold for replacing the phenomenological exp(-t/T2) envelope with a real
-# dissipative model. The Liouvillian L acts on a vectorized density matrix
-# (column-stacking convention), rho(t) = expm(L t) @ vec(rho0). Independent
-# transverse dephasing on each spin with rate 1/T2 reproduces Lorentzian lines.
-# Kept here for completeness/teaching; the live UI uses the fast closed form
-# above so dragging stays instant.
+# A physical alternative to the phenomenological exp(-t/T2) envelope. The
+# Liouvillian L acts on a *vectorized* density matrix (column-stacking
+# convention, so vec(A X B) = (B^T (x) A) vec(X)), with rho(t) = expm(L t) vec(rho0).
+# Each spin dephases independently, and the linewidths then emerge from the
+# model rather than being imposed -- a line built from more dephasing spins
+# comes out broader. The UI lets you toggle this on live (see the relaxation
+# selector); it is heavier than the unitary closed form but still instant at
+# Hilbert dimension <= 16.
 def lindblad_liouvillian(system, J, Bz, T2):
-    """Vectorized Liouvillian L (dim^2 x dim^2): drho/dt = L rho, column-stacked."""
-    from scipy.linalg import kron as spkron  # local import keeps SciPy optional
+    """Vectorized Liouvillian L (dim^2 x dim^2): d vec(rho)/dt = L vec(rho).
 
+    Coherent part  -i (I (x) H - H^T (x) I)  plus, for each spin, a transverse
+    dephasing dissipator with collapse operator C_i = sqrt(2/T2) I_i^z. That
+    normalization makes a single isolated spin's coherence decay at exactly 1/T2
+    (d rho_01/dt = -(1/T2) rho_01).
+    """
     H = system.hamiltonian(J, Bz)
     d = system.dim
     Id = np.eye(d, dtype=complex)
-    # Coherent part: -i (I (x) H - H^T (x) I)   (column-stacking convention)
-    L = -1j * (spkron(Id, H) - spkron(H.T, Id))
-    # Dephasing collapse operators sqrt(rate) * sqrt(2) I_i^z give 1/T2 decay.
+    # Coherent part (column-stacking convention).
+    L = -1j * (np.kron(Id, H) - np.kron(H.T, Id))
+    # Independent transverse dephasing on each spin.
     rate = 1.0 / T2
     for Iz in system.Iz:
         C = np.sqrt(2.0 * rate) * Iz
-        Cd = C.conj().T
-        CdC = Cd @ C
-        L += (spkron(C.conj(), C)
-              - 0.5 * spkron(Id, CdC)
-              - 0.5 * spkron(CdC.T, Id))
+        CdC = C.conj().T @ C
+        L += (np.kron(C.conj(), C)
+              - 0.5 * np.kron(Id, CdC)
+              - 0.5 * np.kron(CdC.T, Id))
     return L
+
+
+def evolve_signal_lindblad(system, J, Bz, T2, t):
+    """Time-domain signal under the Lindblad master equation.
+
+    We diagonalize the Liouvillian once, L = P diag(lam) P^-1, and write the
+    detected signal S(t) = Tr[rho(t) M] = vec(M^T)^T expm(L t) vec(rho0) as a
+    sum of *complex* exponentials,
+
+        S(t) = Re sum_k coef_k exp(lam_k t),
+
+    where Re(lam_k) <= 0 sets the decay and Im(lam_k) the oscillation frequency.
+    This mirrors the unitary closed form but with damped rates. Stationary modes
+    (lam ~ 0) are dropped to AC-couple the signal, matching the magnetometer.
+    Falls back to a direct propagator if L is numerically non-diagonalizable.
+    """
+    L = lindblad_liouvillian(system, J, Bz, T2)
+    obs = system.M.T.reshape(-1, order="F")        # vec(M^T), column-stacked
+    vrho0 = system.rho0.reshape(-1, order="F")     # vec(rho0)
+    try:
+        lam, P = np.linalg.eig(L)
+        coef = (obs @ P) * np.linalg.solve(P, vrho0)
+        # Keep only the *oscillating* coherences (Im(lam) != 0). The remaining
+        # modes are non-oscillating relaxation/population (T1-like) terms that
+        # form a baseline at 0 Hz; dropping them AC-couples the signal, exactly
+        # as mean-subtraction does for the unitary case. Also drop negligible-
+        # amplitude modes so the time evaluation stays a short sum of damped
+        # exponentials (and hence fast).
+        amp = np.abs(coef)
+        keep = (np.abs(lam.imag) > 0.5) & (amp > 1e-6 * (amp.max() or 1.0))
+        S = (np.exp(np.outer(t, lam[keep])) @ coef[keep]).real
+        if not np.all(np.isfinite(S)):
+            raise np.linalg.LinAlgError("non-finite signal")
+    except np.linalg.LinAlgError:
+        S = _lindblad_signal_stepwise(L, obs, vrho0, t)
+    return S - S.mean(), None
+
+
+def _lindblad_signal_stepwise(L, obs, vrho0, t):
+    """Robust fallback: step vec(rho) with a fixed propagator expm(L*dt)."""
+    from scipy.linalg import expm
+    step = expm(L * (t[1] - t[0]))
+    v = vrho0.astype(complex)
+    S = np.empty(len(t))
+    for k in range(len(t)):
+        S[k] = (obs @ v).real
+        v = step @ v
+    return S
 
 
 # ===========================================================================
@@ -295,23 +367,32 @@ TIME_WINDOW_S = 0.050   # show the first 50 ms of the FID
 FREQ_MAX_HZ = 300.0     # spectrum view 0..300 Hz
 
 
+# Relaxation models exposed by the live toggle: label -> signal evaluator.
+RELAX_MODELS = {
+    "exp(-t/T2)": evolve_signal,
+    "Lindblad": evolve_signal_lindblad,
+}
+RELAX_LABELS = list(RELAX_MODELS)
+
+
 def build_app(defaults=DEFAULTS):
     """Build the figure, axes, widgets and callbacks. Returns the Figure."""
     state = {
         "system": SpinSystem(defaults["system"]),
-        "S": None,          # last computed (windowed) time signal, for Play
-        "anim": None,       # keep a reference so the animation isn't GC'd
+        "relax": RELAX_LABELS[0],   # active relaxation model label
+        "S": None,                  # last computed (windowed) time signal, for Play
+        "anim": None,               # keep a reference so the animation isn't GC'd
     }
     tmask = TIME <= TIME_WINDOW_S
     t_ms = TIME[tmask] * 1e3
 
-    fig = plt.figure(figsize=(8.2, 7.6))
+    fig = plt.figure(figsize=(8.4, 8.0))
     fig.patch.set_facecolor("white")
     fig.suptitle("ZULF Lab — zero/ultralow-field NMR spin simulator",
                  fontsize=13, fontweight="bold", color=INK)
 
-    ax_time = fig.add_axes([0.12, 0.66, 0.84, 0.24])
-    ax_freq = fig.add_axes([0.12, 0.36, 0.84, 0.24])
+    ax_time = fig.add_axes([0.11, 0.71, 0.85, 0.20])
+    ax_freq = fig.add_axes([0.11, 0.45, 0.85, 0.20])
     for ax in (ax_time, ax_freq):
         ax.set_facecolor("white")
         ax.grid(True, alpha=0.25)
@@ -336,10 +417,10 @@ def build_app(defaults=DEFAULTS):
     aux_lines = [ax_freq.axvline(0, color=MARKER, lw=0.9, ls=":", alpha=0.0)
                  for _ in range(3)]
 
-    # ---- sliders ----
-    ax_J = fig.add_axes([0.14, 0.235, 0.58, 0.03])
-    ax_B = fig.add_axes([0.14, 0.185, 0.58, 0.03])
-    ax_T2 = fig.add_axes([0.14, 0.135, 0.58, 0.03])
+    # ---- sliders (left column) ----
+    ax_J = fig.add_axes([0.13, 0.345, 0.44, 0.028])
+    ax_B = fig.add_axes([0.13, 0.300, 0.44, 0.028])
+    ax_T2 = fig.add_axes([0.13, 0.255, 0.44, 0.028])
     s_J = Slider(ax_J, "J (Hz)", 0.0, 300.0, valinit=defaults["J"],
                  color=ACCENT, valfmt="%.0f")
     s_B = Slider(ax_B, "B_z (µT)", 0.0, 5.0, valinit=defaults["Bz"],
@@ -350,29 +431,39 @@ def build_app(defaults=DEFAULTS):
         s.label.set_color(INK)
         s.valtext.set_color(INK)
 
-    # ---- system selector (radio) ----
-    ax_radio = fig.add_axes([0.78, 0.135, 0.18, 0.13])
-    ax_radio.set_title("spin system", fontsize=9, color=INK)
-    radio = RadioButtons(ax_radio, ("XH", "XH2", "XH3"),
-                         active=("XH", "XH2", "XH3").index(defaults["system"]))
-    for lbl in radio.labels:
+    # ---- relaxation-model selector (left, below the sliders) ----
+    ax_relax = fig.add_axes([0.13, 0.085, 0.22, 0.11])
+    ax_relax.set_title("relaxation model", fontsize=9, color=INK)
+    relax_radio = RadioButtons(ax_relax, tuple(RELAX_LABELS),
+                               active=RELAX_LABELS.index(state["relax"]))
+    for lbl in relax_radio.labels:
         lbl.set_color(INK)
         lbl.set_fontsize(9)
 
     # ---- buttons ----
-    ax_play = fig.add_axes([0.14, 0.045, 0.16, 0.05])
-    ax_reset = fig.add_axes([0.34, 0.045, 0.16, 0.05])
+    ax_play = fig.add_axes([0.40, 0.135, 0.16, 0.05])
+    ax_reset = fig.add_axes([0.40, 0.075, 0.16, 0.05])
     b_play = Button(ax_play, "▶ Play FID", color="#e9f5f3", hovercolor="#cdeae6")
     b_reset = Button(ax_reset, "Reset", color="#f1f1f1", hovercolor="#dddddd")
     b_play.label.set_color(INK)
     b_reset.label.set_color(INK)
 
+    # ---- spin-system selector (right column) ----
+    ax_radio = fig.add_axes([0.66, 0.075, 0.30, 0.30])
+    ax_radio.set_title("spin system", fontsize=9, color=INK)
+    radio = RadioButtons(ax_radio, tuple(SYSTEM_NAMES),
+                         active=SYSTEM_NAMES.index(defaults["system"]))
+    for lbl in radio.labels:
+        lbl.set_color(INK)
+        lbl.set_fontsize(9)
+
     # ---- the core update: recompute everything and redraw ----
     def recompute(_=None):
         system = state["system"]
         J, Bz, T2 = s_J.val, s_B.val, s_T2.val
+        evolve = RELAX_MODELS[state["relax"]]
 
-        S, E = evolve_signal(system, J, Bz, T2, TIME)
+        S, _ = evolve(system, J, Bz, T2, TIME)
         freqs, mag = spectrum(S, DT)
 
         Sw = S[tmask]
@@ -399,21 +490,29 @@ def build_app(defaults=DEFAULTS):
             else:
                 aux.set_alpha(0.0)
 
+        if state["relax"] == "Lindblad":
+            relax_txt = "Lindblad (per-spin dephasing, 1/T2 each)"
+        else:
+            relax_txt = f"exp(−t/T2)  →  linewidth ≈ {1/(np.pi*T2):.2f} Hz"
         ax_time.set_title(
-            f"{system.name}   |   J = {J:.0f} Hz,  B_z = {Bz:.2f} µT,  "
-            f"T2 = {T2:.2f} s   |   linewidth ≈ {1/(np.pi*T2):.2f} Hz",
-            fontsize=10, color=INK)
+            f"{system.name}  [{'·'.join(system.nuclei)}]   |   "
+            f"J = {J:.0f} Hz,  B_z = {Bz:.2f} µT,  T2 = {T2:.2f} s   |   "
+            f"{relax_txt}", fontsize=9.5, color=INK)
         fig.canvas.draw_idle()
 
     def on_system(label):
         state["system"] = SpinSystem(label)
         recompute()
 
+    def on_relax(label):
+        state["relax"] = label
+        recompute()
+
     def on_reset(_):
         s_J.reset()
         s_B.reset()
         s_T2.reset()
-        # radio has no clean programmatic reset across versions; leave as-is.
+        # radios have no clean programmatic reset across versions; leave as-is.
         recompute()
 
     def on_play(_):
@@ -437,12 +536,13 @@ def build_app(defaults=DEFAULTS):
     s_B.on_changed(recompute)
     s_T2.on_changed(recompute)
     radio.on_clicked(on_system)
+    relax_radio.on_clicked(on_relax)
     b_reset.on_clicked(on_reset)
     b_play.on_clicked(on_play)
 
     recompute()
     # keep widget references alive on the figure
-    fig._zulf_widgets = (s_J, s_B, s_T2, radio, b_play, b_reset)
+    fig._zulf_widgets = (s_J, s_B, s_T2, radio, relax_radio, b_play, b_reset)
     return fig
 
 
@@ -484,9 +584,23 @@ def sanity_check():
     print(f"[homonuclear gamma_C=gamma_H] signal RMS : {rms:.2e}  "
           f"-> {'PASS (zero)' if rms < 1e-9 else 'FAIL'}")
 
-    for name in ("XH", "XH2", "XH3"):
+    # Lindblad model: same line position as the unitary closed form, and the
+    # line broadens as T2 shrinks (linewidth from FWHM of the magnitude peak).
+    def _fwhm_hz(T2):
+        Sl, _ = evolve_signal_lindblad(sysXH, 140.0, 0.0, T2, TIME)
+        fl, ml = spectrum(Sl, DT)
+        half = ml.max() / 2.0
+        above = fl[ml >= half]
+        return fl[np.argmax(ml)], (above.max() - above.min())
+    pk_l, w1 = _fwhm_hz(1.0)
+    _, w2 = _fwhm_hz(0.3)
+    okL = abs(pk_l - 140.0) <= (f[1] - f[0]) and w2 > w1
+    print(f"[XH, Lindblad] peak {pk_l:.2f} Hz; FWHM {w1:.2f}->{w2:.2f} Hz "
+          f"as T2 1.0->0.3 s  -> {'PASS' if okL else 'FAIL'}")
+
+    for name in SYSTEM_NAMES:
         s = SpinSystem(name)
-        print(f"[{name}] predicted zero-field lines (J=140): "
+        print(f"[{name:>6}] ({'·'.join(s.nuclei)})  predicted ZF lines (J=140): "
               f"{[round(x, 1) for x in zero_field_lines(s.n - 1, 140.0)]} Hz")
     print("=" * 64)
 
