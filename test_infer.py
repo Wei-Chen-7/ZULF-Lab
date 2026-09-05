@@ -141,3 +141,86 @@ def test_simulate_is_batched_and_finite():
 def test_larger_systems_are_refused_for_now():
     with pytest.raises(NotImplementedError):
         zi.InferenceProblem(system="methanol")
+
+
+# ---------------------------------------------------------------------------
+# The field-angle degeneracy
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("th", [10.0, 30.0, 55.0, 75.0])
+def test_theta_and_180_minus_theta_are_indistinguishable(th):
+    """Only |cos(theta)| is identifiable.
+
+    R_x(pi) maps B=(Bx,0,Bz) to (Bx,0,-Bz) and sends both rho(0)=M and M to
+    -M, so S(t) = Tr[rho(t) M] is unchanged. The line list is bit-identical;
+    the summary agrees to floating-point roundoff on ~222 Hz values.
+    """
+    s = zf.build_system("formic_acid")
+    Jm = np.array([[0.0, 222.9], [222.9, 0.0]])
+    f1, a1 = zf.line_list(s, B=zf.field_vector(1e-3, th), J=Jm)
+    f2, a2 = zf.line_list(s, B=zf.field_vector(1e-3, 180.0 - th), J=Jm)
+    assert np.allclose(np.sort(f1), np.sort(f2), rtol=0, atol=1e-9)
+    assert np.allclose(np.sort(np.abs(a1)), np.sort(np.abs(a2)), atol=1e-9)
+
+
+def test_prior_breaks_the_angle_degeneracy_by_convention():
+    """The prior stops at 90 degrees, as a canonical ordering would."""
+    p = zi.InferenceProblem()
+    assert np.isclose(p.high[2], 90.0)
+    assert np.all(p.sample_prior(200)[:, 2] <= 90.0)
+
+
+# ---------------------------------------------------------------------------
+# Exact likelihood and reweighting helpers
+# ---------------------------------------------------------------------------
+def test_noise_is_applied_to_every_slot():
+    """A fully Gaussian noise model is what makes the likelihood analytic."""
+    p = zi.InferenceProblem(sigma_f=1e-3, sigma_logamp=0.02, seed=3)
+    th = np.array([222.9, 0.0, 0.0, 12.0])          # zero field: padded slots
+    draws = np.stack([p.simulate_one(th) for _ in range(600)])
+    assert np.all(draws.std(axis=0) > 0), "every slot must be perturbed"
+    assert np.allclose(draws.std(axis=0), p.slot_sigmas(), rtol=0.2)
+
+
+def test_log_likelihood_peaks_at_the_truth():
+    p = zi.InferenceProblem(seed=5)
+    th = np.array([222.9, 1.0, 55.0, 12.0])
+    x = p.simulate_one(th, noisy=False)
+    grid = np.array([[J, 1.0, 55.0, 12.0]
+                     for J in np.linspace(222.85, 222.95, 41)])
+    ll = p.log_likelihood(x, grid)
+    assert np.isclose(grid[np.argmax(ll), 0], 222.9, atol=3e-3)
+
+
+def test_log_likelihood_matches_a_hand_computed_gaussian():
+    p = zi.InferenceProblem(seed=7)
+    th = np.array([222.9, 1.0, 55.0, 12.0])
+    x_clean = p.simulate_one(th, noisy=False)
+    x_obs = x_clean.copy()
+    x_obs[2] += 0.002
+    sig = p.slot_sigmas()
+    want = (-0.5 * ((x_obs - x_clean) / sig) ** 2).sum() \
+        - np.sum(np.log(sig)) - 0.5 * len(sig) * np.log(2 * np.pi)
+    assert np.isclose(p.log_likelihood(x_obs, th)[0], want)
+
+
+def test_weighted_quantile_reduces_to_the_plain_one():
+    v = np.random.default_rng(0).normal(size=5000)
+    w = np.ones_like(v)
+    got = zi.weighted_quantile(v, [0.025, 0.5, 0.975], w)
+    want = np.percentile(v, [2.5, 50, 97.5])
+    assert np.allclose(got, want, atol=0.05)
+
+
+def test_weighted_quantile_respects_weights():
+    v = np.array([0.0, 1.0])
+    assert np.isclose(zi.weighted_quantile(v, [0.5], np.array([1.0, 0.0]))[0], 0.0)
+    assert np.isclose(zi.weighted_quantile(v, [0.5], np.array([0.0, 1.0]))[0], 1.0)
+
+
+def test_in_prior_flags_out_of_box_samples():
+    p = zi.InferenceProblem()
+    good = p.sample_prior(20)
+    bad = good.copy()
+    bad[:, 2] = 150.0                                # beyond the 90 deg cut
+    assert p.in_prior(good).all()
+    assert not p.in_prior(bad).any()

@@ -141,15 +141,23 @@ class InferenceProblem:
 
     def __init__(self, system="formic_acid", J_center=222.2, J_half=3.0,
                  B_max_nT=2.0, T2_range=(3.0, 40.0),
-                 sigma_f=1e-3, sigma_logamp=0.03, seed=0):
+                 sigma_f=1e-3, sigma_logamp=0.03, seed=0, theta_max_deg=90.0):
         self.sys = zf.build_system(system)
         if self.sys.n != 2:
             raise NotImplementedError(
                 "the two-spin problem is the one the failure criterion names; "
                 "larger systems need a richer parameterization of J")
         self.J_center = float(J_center)
+        # The field angle prior stops at 90 degrees on purpose. theta and
+        # 180 - theta give bit-identical spectra: R_x(pi) maps B=(Bx,0,Bz) to
+        # (Bx,0,-Bz) and sends both rho(0)=M and M to -M, leaving
+        # S(t) = Tr[rho(t) M] unchanged, so only |cos theta| is identifiable.
+        # Restricting the prior removes the degeneracy by convention, exactly
+        # as a canonical ordering removes the equal-gamma permutations. Without
+        # it the posterior is bimodal and its mean is a meaningless number.
         self.low = np.array([J_center - J_half, 0.0, 0.0, T2_range[0]])
-        self.high = np.array([J_center + J_half, B_max_nT, 180.0, T2_range[1]])
+        self.high = np.array([J_center + J_half, B_max_nT, theta_max_deg,
+                              T2_range[1]])
         self.sigma_f = float(sigma_f)
         self.sigma_logamp = float(sigma_logamp)
         self.rng = np.random.default_rng(seed)
@@ -166,6 +174,25 @@ class InferenceProblem:
         return self.rng.uniform(self.low, self.high, size=(n, len(self.low)))
 
     # -- simulator ---------------------------------------------------------
+    #: slot indices for (frequency-like, amplitude-like) entries of the summary
+    _N_LOW, _N_HIGH = 1, 3
+
+    def slot_sigmas(self):
+        """Per-slot noise scale, matching :meth:`simulate_one` exactly.
+
+        Every slot is perturbed, including padded ones, so the likelihood is a
+        plain Gaussian with no delta functions. That is what makes the exact
+        log-likelihood below available, and hence importance reweighting.
+        """
+        nl, nh = self._N_LOW, self._N_HIGH
+        sig = np.empty(2 * nl + 2 * nh + 1)
+        sig[:nl] = self.sigma_f                       # low-frequency positions
+        sig[nl:2 * nl] = self.sigma_logamp            # low-frequency amplitudes
+        sig[2 * nl:2 * nl + nh] = self.sigma_f        # multiplet positions
+        sig[2 * nl + nh:2 * nl + 2 * nh] = self.sigma_logamp
+        sig[-1] = self.sigma_logamp                   # log width
+        return sig
+
     def simulate_one(self, theta, noisy=True):
         """One parameter vector -> one summary vector."""
         J, B_nT, ang, T2 = (float(v) for v in theta)
@@ -175,22 +202,33 @@ class InferenceProblem:
         width = 1.0 / (np.pi * T2)                     # absorption FWHM
         x = peak_summary(f, a, width, self.J_center)
         if noisy:
-            n_low, n_high = 1, 3
-            x = x.copy()
-            # frequency slots: positions 0..n_low-1 and 2*n_low..2*n_low+n_high-1
-            fslots = list(range(n_low)) + \
-                list(range(2 * n_low, 2 * n_low + n_high))
-            aslots = list(range(n_low, 2 * n_low)) + \
-                list(range(2 * n_low + n_high, 2 * n_low + 2 * n_high))
-            x[fslots] += self.rng.normal(0.0, self.sigma_f, len(fslots))
-            present = x[aslots] > _LOGAMP_FLOOR + 1e-9
-            noise = self.rng.normal(0.0, self.sigma_logamp, len(aslots))
-            x[aslots] = np.where(present, x[aslots] + noise, x[aslots])
-            x[-1] += self.rng.normal(0.0, self.sigma_logamp)
+            x = x + self.rng.normal(0.0, self.slot_sigmas())
         return x
 
     def simulate(self, thetas, noisy=True):
         return np.stack([self.simulate_one(t, noisy) for t in np.asarray(thetas)])
+
+    # -- exact likelihood --------------------------------------------------
+    def log_likelihood(self, x_obs, thetas):
+        """log p(x_obs | theta), exactly, for one or many theta.
+
+        The forward model is deterministic and the noise is additive Gaussian,
+        so the likelihood is available in closed form at the cost of one
+        simulation. This is worth stating plainly: the case for SBI here is not
+        intractability, it is that the network searches globally and can hold
+        several separated solutions at once. Having the likelihood is what lets
+        the network samples be reweighted into an exact posterior.
+        """
+        thetas = np.atleast_2d(np.asarray(thetas, float))
+        sig = self.slot_sigmas()
+        mu = np.stack([self.simulate_one(t, noisy=False) for t in thetas])
+        r = (np.asarray(x_obs, float)[None, :] - mu) / sig
+        return -0.5 * np.sum(r * r, axis=1) - np.sum(np.log(sig)) \
+            - 0.5 * len(sig) * np.log(2 * np.pi)
+
+    def in_prior(self, thetas):
+        thetas = np.atleast_2d(np.asarray(thetas, float))
+        return np.all((thetas >= self.low) & (thetas <= self.high), axis=1)
 
     # -- convenience -------------------------------------------------------
     def x_dim(self):
@@ -200,56 +238,103 @@ class InferenceProblem:
 # ===========================================================================
 # Demo / first-network experiment
 # ===========================================================================
-def _train_and_report(n_sims=20000, sigma_f=1e-3, seed=0, epochs=None,
-                      verbose=True):
-    """Train a single-round NPE and report the posterior width on J."""
+def weighted_quantile(values, quantiles, weights):
+    """Weighted quantiles of a 1-D sample.
+
+    Uses the midpoint convention, ``c = cumsum(w) - w/2`` normalized, which is
+    what keeps the result correct when the weights are very uneven -- exactly
+    the importance-sampling case, where naive interpolation on the raw
+    cumulative sum drags every quantile toward the middle of the support.
+    """
+    order = np.argsort(values)
+    v, w = np.asarray(values, float)[order], np.asarray(weights, float)[order]
+    total = w.sum()
+    if not np.isfinite(total) or total <= 0:
+        return np.full(np.shape(np.atleast_1d(quantiles)), np.nan)
+    c = (np.cumsum(w) - 0.5 * w) / total
+    return np.interp(np.asarray(quantiles, float), c, v)
+
+
+def importance_reweight(prob, posterior, x_obs, samples):
+    """Reweight NPE samples by likelihood x prior / network density.
+
+    Returns ``(weights, efficiency)``. The efficiency is ESS/N: it is the
+    diagnostic that flags a wrong model, and the project's own failure
+    criterion puts a floor of 1% on it for real data.
+    """
     import torch
-    from sbi.inference import NPE
+    log_q = posterior.log_prob(torch.as_tensor(samples, dtype=torch.float32),
+                              x=torch.as_tensor(x_obs, dtype=torch.float32),
+                              norm_posterior=False).detach().numpy()
+    log_l = prob.log_likelihood(x_obs, samples)
+    log_w = log_l - log_q                      # uniform prior: constant, drops
+    log_w = np.where(prob.in_prior(samples), log_w, -np.inf)
+    log_w -= np.nanmax(log_w[np.isfinite(log_w)])
+    w = np.exp(log_w)
+    w[~np.isfinite(w)] = 0.0
+    eff = (w.sum() ** 2) / (len(w) * np.sum(w ** 2)) if np.any(w) else 0.0
+    return w, eff
 
-    torch.manual_seed(seed)
-    prob = InferenceProblem(sigma_f=sigma_f, seed=seed)
 
-    theta = prob.sample_prior(n_sims)
-    x = prob.simulate(theta)
-
-    inference = NPE(prior=prob.prior(), density_estimator="nsf")
-    inference.append_simulations(torch.as_tensor(theta, dtype=torch.float32),
-                                 torch.as_tensor(x, dtype=torch.float32))
-    kw = {"show_train_summary": verbose}
-    if epochs:
-        kw["max_num_epochs"] = epochs
-    inference.train(**kw)
-    posterior = inference.build_posterior()
-
-    # A representative observation: mid-prior J, a real residual field.
-    theta_true = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
-    x_obs = prob.simulate_one(theta_true)
-    samples = posterior.sample((4000,),
-                               x=torch.as_tensor(x_obs, dtype=torch.float32),
-                               show_progress_bars=False).numpy()
-    return prob, theta_true, samples
+def _report(prob, theta_true, s, w=None, label=""):
+    print(f"\n{label}")
+    print("-" * len(label))
+    for i, name in enumerate(PARAM_NAMES):
+        if w is None:
+            lo, hi = np.percentile(s[:, i], [2.5, 97.5])
+            mean = s[:, i].mean()
+        else:
+            lo, hi = weighted_quantile(s[:, i], [0.025, 0.975], w)
+            mean = np.average(s[:, i], weights=w)
+        print(f"  {name:12s} true {theta_true[i]:9.4f} | mean {mean:9.4f} | "
+              f"95% [{lo:.4f}, {hi:.4f}]  width {(hi - lo):.4g}")
+    if w is None:
+        lo, hi = np.percentile(s[:, 0], [2.5, 97.5])
+    else:
+        lo, hi = weighted_quantile(s[:, 0], [0.025, 0.975], w)
+    return (hi - lo) * 1e3
 
 
 def main():  # pragma: no cover - demo
     import torch
-    np.set_printoptions(suppress=True)
-    prob, theta_true, s = _train_and_report()
+    from sbi.inference import NPE
 
-    print("\n" + "=" * 70)
-    print("First NPE posterior, [13C]-formic acid (2 spins)")
-    print("=" * 70)
-    for i, name in enumerate(PARAM_NAMES):
-        lo, hi = np.percentile(s[:, i], [2.5, 97.5])
-        print(f"  {name:12s} true {theta_true[i]:9.4f} | "
-              f"post {s[:, i].mean():9.4f} +/- {s[:, i].std():8.4f} | "
-              f"95% [{lo:.4f}, {hi:.4f}]")
-    width_mHz = (np.percentile(s[:, 0], 97.5) - np.percentile(s[:, 0], 2.5)) * 1e3
+    n_sims, seed = 50000, 0
+    np.set_printoptions(suppress=True)
+    torch.manual_seed(seed)
+    prob = InferenceProblem(seed=seed)
+
+    theta = prob.sample_prior(n_sims)
+    x = prob.simulate(theta)
+    inference = NPE(prior=prob.prior(), density_estimator="nsf")
+    inference.append_simulations(torch.as_tensor(theta, dtype=torch.float32),
+                                 torch.as_tensor(x, dtype=torch.float32))
+    inference.train(show_train_summary=True)
+    posterior = inference.build_posterior()
+
+    theta_true = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+    x_obs = prob.simulate_one(theta_true)
+    s = posterior.sample((20000,),
+                         x=torch.as_tensor(x_obs, dtype=torch.float32),
+                         show_progress_bars=False).numpy()
+
+    print("\n" + "=" * 74)
+    print(f"[13C]-formic acid, single-round NPE, {n_sims} simulations")
+    print("=" * 74)
+    raw = _report(prob, theta_true, s, None, "Raw NPE posterior")
+    w, eff = importance_reweight(prob, posterior, x_obs, s)
+    rew = _report(prob, theta_true, s, w,
+                  f"After importance reweighting (efficiency {eff:.1%})")
+
     prior_mHz = (prob.high[0] - prob.low[0]) * 1e3
-    print(f"\n  prior width on J : {prior_mHz:9.1f} mHz")
-    print(f"  95% posterior    : {width_mHz:9.1f} mHz")
-    print(f"  shrinkage factor : {prior_mHz / width_mHz:9.1f}x")
-    print(f"  failure criterion: posterior on J wider than 10 mHz -> "
-          f"{'FAIL' if width_mHz > 10 else 'PASS'}")
+    floor = 2 * 1.96 * prob.sigma_f / np.sqrt(3) * 1e3   # 3 multiplet lines
+    print(f"\n  prior width on J        : {prior_mHz:9.1f} mHz")
+    print(f"  raw NPE 95% width       : {raw:9.2f} mHz  ({prior_mHz/raw:.0f}x shrinkage)")
+    print(f"  reweighted 95% width    : {rew:9.2f} mHz  ({prior_mHz/rew:.0f}x shrinkage)")
+    print(f"  information floor       : {floor:9.2f} mHz  (3 lines at sigma_f={prob.sigma_f*1e3:.1f} mHz)")
+    print(f"  sample efficiency       : {eff:9.1%}  (criterion: > 1%)")
+    print(f"\n  criterion is on the REWEIGHTED posterior, < 10 mHz -> "
+          f"{'PASS' if rew < 10 else 'FAIL'}")
 
 
 if __name__ == "__main__":
