@@ -98,6 +98,55 @@ sign-flip and equal-γ permutation degeneracies, the transverse-field doublet
 split by the *sum* of the Larmor frequencies with a line at their *mean*
 (ref [13]), and the negative pulse-acquire weights at π/2 and π proton angles.
 
+## `zulf_infer.py` — priors, peak-list summaries, NPE
+
+```bash
+python zulf_infer.py            # trains a single-round NPE on [13C]-formic acid
+pytest -q test_infer.py         # 26 tests
+```
+
+Parameters are `(J, |B|, θ_B, T2)`. The coupling prior is a few Hz wide rather
+than the full band, since DFT/ML predictors already fix ¹J_CH to ~1 Hz; the
+nuisances get deliberately wide priors. The observation is a fixed-length
+(frequency, amplitude, width) summary — a low-frequency Larmor group and a
+high-frequency J multiplet, with multiplet positions as offsets from the prior
+centre. Lines closer than a linewidth are merged, as a real spectrometer would.
+
+Because the forward model is deterministic with additive Gaussian noise, the
+likelihood is available in closed form, so NPE samples can be reweighted into an
+exact posterior — the case for SBI here is global search and multimodality, not
+intractability.
+
+### First result (simulated data, [¹³C]-formic acid, 50k simulations)
+
+| | J, 95% width | shrinkage |
+|---|---|---|
+| prior | 6000 mHz | — |
+| raw NPE | 11.4 mHz | 528× |
+| **after importance reweighting** | **2.18 mHz** | **2750×** |
+| information floor (3 lines at σ_f = 1 mHz) | 2.26 mHz | — |
+
+Reweighting reaches the information floor, and the nuisances are recovered
+(B_θ = 54.97° against a true 55°). **Sample efficiency is 1.7%**, above the 1%
+floor but not by much — the raw NPE proposal is ~5× wider than the true
+posterior, so most samples land in the wings. This is the perfectly-specified
+simulated case; real data will only lower it, so a tighter proposal is worth
+having before then.
+
+> These numbers are conditional on σ_f, the peak-position measurement error,
+> which here stands in for the whole acquisition and SNR chain rather than being
+> derived from a simulated FID.
+
+### A third exact degeneracy
+
+θ_B and 180° − θ_B give bit-identical spectra: R_x(π) maps **B** = (Bx, 0, Bz) to
+(Bx, 0, −Bz) and sends both ρ(0) = M and M to −M, leaving S(t) = Tr[ρ(t)M]
+unchanged, so only |cos θ_B| is identifiable. This sits alongside the global sign
+flip and the equal-γ permutations, and is broken here by capping the prior at
+90°. Before that cap the angle posterior was bimodal at 55° and 125° with a mean
+of 90° — a posterior mean over a symmetric two-peaked distribution, which is a
+number with no meaning.
+
 ## Correctness test
 
 At **B_z = 0 the spectral peak sits at exactly f = J** (within the ~0.33 Hz
