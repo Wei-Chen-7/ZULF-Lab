@@ -182,6 +182,57 @@ having before then.
 > which here stands in for the whole acquisition and SNR chain rather than being
 > derived from a simulated FID.
 
+### Calibration, efficiency and an independent reference
+
+```bash
+python sigma_f_study.py      # what peak-position precision is actually achievable
+python tighten_proposal.py   # compare NPE configurations
+python nested_reference.py   # exact-likelihood reference posterior
+python final_check.py        # SBC + efficiency spread on the tightened network
+```
+
+**σ_f is measured, not assumed.** Across T2 = 3–30 s and SNR = 30–300,
+σ_f ≈ FWHM/(1.3 × SNR). The 1 mHz the inference work assumed corresponds to only
+SNR ≈ 24 at T2 = 10 s, so it was *conservative*. (Idealised: one isolated line,
+correct lineshape, flat baseline.)
+
+**Tightening the proposal.** 150k simulations halve the raw NPE width
+(11.1 → 5.8 mHz) and lift efficiency from 12% to 30%. A wider flow gave the
+tightest proposal (2.3× floor) but the *worst* efficiency (9%) — efficiency does
+not track width alone, since a narrow but mis-centred proposal produces extreme
+weights.
+
+**Reweighted precision is invariant.** ~2.24 mHz across every configuration
+tried, including one deliberately undertrained network whose raw proposal was as
+wide as the prior. Precision comes from the exact likelihood; the proposal only
+sets efficiency.
+
+**SBC says the network is conservative, not overconfident.** On J the ranks are
+depleted at the edges (outer 20% holds 0.040 of the mass against 0.20 expected,
+−6.9σ) and mildly heavy in the centre — the signature of a posterior that is too
+*wide*. B_θ and T2 are calibrated. Too-wide is the safe direction, and it is
+precisely why importance reweighting has good coverage.
+
+![SBC ranks](sbc_ranks.png)
+
+**Efficiency varies 40× between observations** — 1.38% to 55.67% over 40 draws
+from the prior, median 23.4%, none below 1%. This matters for the project's
+failure criterion, which is stated as a single number: the same network on the
+same model can read 1.4% on one spectrum and 55% on another. Quoting it over
+several spectra, or with its spread, would be more robust than a single reading.
+
+**Against nested sampling on the exact likelihood**, on the same observation:
+
+| | J 95% width |
+|---|---|
+| nested sampling (reference) | 2.28 mHz |
+| reweighted NPE | 2.27 mHz |
+| agreement | **0.4%** |
+
+Earlier, at 1.7% efficiency, the same comparison agreed only to 4%. At ESS ≈ 340
+the reweighted quantiles carry ~5% Monte Carlo error, so **low efficiency
+degrades the accuracy of the reweighted estimate, not just its speed.**
+
 ### A third exact degeneracy
 
 θ_B and 180° − θ_B give bit-identical spectra: R_x(π) maps **B** = (Bx, 0, Bz) to

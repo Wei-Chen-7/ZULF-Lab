@@ -61,19 +61,32 @@ def diagnose(ranks, n_post, n_bins=20):
         p_chi2 = 1 - stats.chi2.cdf(chi2, n_bins - 1)
         p_ks = stats.kstest(r, "uniform").pvalue
 
-        # where is the mass? outer 20% vs central 20%, each expected at 0.2
+        # Where is the mass? Outer 20% and central 20% of the range, each
+        # expected at 0.20. Compare in sigma, not against a fixed cut: a
+        # *depletion* of the edges is as strong a signal of a too-wide
+        # posterior as a pile-up in the centre, and is often the more
+        # sensitive of the two, so testing only "centre > some cut" misses it.
         outer = float(np.mean((r < 0.1) | (r > 0.9)))
         centre = float(np.mean((r > 0.4) & (r < 0.6)))
+        sd = np.sqrt(0.2 * 0.8 / n_trials)
+        z_outer = (outer - 0.2) / sd
+        z_centre = (centre - 0.2) / sd
+        # a systematic shift shows up as the mean rank leaving 0.5
+        z_shift = (r.mean() - 0.5) / (np.sqrt(1 / 12.0) / np.sqrt(n_trials))
+
         if p_chi2 > 0.01 and p_ks > 0.01:
             verdict = "uniform -> calibrated"
-        elif outer > 0.28:
+        elif z_outer > 2:
             verdict = "edges loaded -> OVERCONFIDENT (posterior too narrow)"
-        elif centre > 0.28:
-            verdict = "centre loaded -> conservative (posterior too wide)"
+        elif z_outer < -2 or z_centre > 2:
+            verdict = "edges depleted -> conservative (posterior too wide)"
+        elif abs(z_shift) > 3:
+            verdict = f"shifted -> biased (mean rank {r.mean():.3f}, not 0.5)"
         else:
-            verdict = "non-uniform -> biased (check for a shift)"
+            verdict = "non-uniform -> shape differs, no clear direction"
         out.append(dict(param=zi.PARAM_NAMES[d], chi2=chi2, p_chi2=p_chi2,
                         p_ks=p_ks, outer=outer, centre=centre,
+                        z_outer=z_outer, z_centre=z_centre, z_shift=z_shift,
                         verdict=verdict))
     return out
 
