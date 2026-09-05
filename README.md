@@ -126,6 +126,23 @@ than a physics error — a residual field would shift lines differentially, and
 left-anchored text label. So the forward model reproduces a real 7-spin
 published multiplet to ~7 mHz RMS.
 
+**Anchor, not scale.** A wrong anchor shifts every line equally; a wrong scale
+stretches them across the span. Regressing offset against frequency gives a
+slope of +0.26 ± 0.84 mHz/Hz (p = 0.76) over the 33 Hz window — no trend. The
+scale is independently fixed by the tick spacing to better than 0.03%, so the
+residual really is a constant anchor offset.
+
+### Which published figures are extractable
+
+Recovering a trace only works where the plot is vector art. Of the papers here:
+**ref [1]** (all five molecules, pages 3–7), **ref [13]**, **ref [16]** and
+**ref [7]** are vector; **ref [3]** (aromatics) and **ref [6]** (the XAₙ
+spectra) are rasters and cannot be recovered this way. Ref [13]'s traces are
+vector but its tick labels use a subsetted font with no usable ToUnicode map,
+so its axis is not cheaply calibrated — though its text already states the
+result that matters (a doublet about J split by the *sum* of the Larmor
+frequencies).
+
 ## `zulf_infer.py` — priors, peak-list summaries, NPE
 
 ```bash
