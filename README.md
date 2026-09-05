@@ -58,6 +58,46 @@ other way as B_z grows.
   exponentials at the transition frequencies `(E_n − E_m)/2π`. A phenomenological
   `exp(-t/T2)` envelope gives Lorentzian lines of width ≈ `1/(πT2)`.
 
+## `zulf_forward.py` — the inference forward model
+
+`zulf_nmr.py` is the interactive teaching demo. `zulf_forward.py` is the
+simulation engine for the simulation-based-inference project: no UI, built for
+speed and generality.
+
+```bash
+python zulf_forward.py          # smoke demo over the molecule presets
+pytest -q test_forward.py       # 32 validation tests
+```
+
+- **Line lists, not time grids.** One diagonalization gives exact (frequency,
+  complex amplitude) pairs — the summary statistic the network needs, and ~240×
+  faster than building an FID and FFT-ing it. **0.204 ms** for a four-spin
+  spectrum; 10⁵ spectra in **21 s**.
+- **Vector field.** `field_vector(|B|, θ)` — two parameters, since only the
+  magnitude and the angle to the sensor axis matter. A longitudinal field shifts
+  the line by 2.3×10⁻⁶ Hz at 1 nT; a transverse one restructures the spectrum at
+  the 10-mHz scale.
+- **General J matrix.** Any topology, not just X coupled to equivalent protons.
+  Includes benzene-¹³C₁ (7 spins, ref [1]'s benchmark with its fitted couplings).
+- **General ρ(0).** All three protocols: `rho_thermal` (sudden drop),
+  `rho_adiabatic` (level-following, exact in the adiabatic limit and validated
+  against an explicit ramp), and pulses in both the ref [1] hard-pulse and
+  ref [14] finite-field conventions.
+- **Detector response.** The 150 Hz sensor pole *and* the documented 6th-order
+  500 Hz hardware low-pass, which is nearly flat in amplitude below 300 Hz but
+  contributes ≈ −67° of differential phase across the J/2J band.
+
+### Validated against the literature
+
+Every test in `test_forward.py` encodes a published fact. Line positions
+ν = J(I_A + ½) are confirmed three ways — Butler Eq. (40), Stern & Sheberstov's
+odd/even rule, and Theis Eq. (1)–(2) — giving XA → J, XA₂ → 3/2 J, XA₃ → J & 2J
+(the last two measured in refs [6] and [13]). Also encoded: the ΔI_A = 0
+selection rule that makes J_HH invisible inside an equivalent group, the global
+sign-flip and equal-γ permutation degeneracies, the transverse-field doublet
+split by the *sum* of the Larmor frequencies with a line at their *mean*
+(ref [13]), and the negative pulse-acquire weights at π/2 and π proton angles.
+
 ## Correctness test
 
 At **B_z = 0 the spectral peak sits at exactly f = J** (within the ~0.33 Hz
