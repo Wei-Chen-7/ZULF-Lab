@@ -295,46 +295,85 @@ def _report(prob, theta_true, s, w=None, label=""):
     return (hi - lo) * 1e3
 
 
-def main():  # pragma: no cover - demo
+def train_npe(prob, n_sims=50000, seed=0, density_estimator="nsf",
+              hidden_features=None, num_transforms=None, verbose=True,
+              **train_kw):
+    """Train a single-round amortized NPE and return (posterior, theta, x).
+
+    Single round on purpose: sequential methods tune the proposal to one
+    observation and lose amortization, which is the property that makes each
+    later spectrum cost one forward pass.
+    """
     import torch
     from sbi.inference import NPE
+    from sbi.neural_nets import posterior_nn
 
-    n_sims, seed = 50000, 0
-    np.set_printoptions(suppress=True)
     torch.manual_seed(seed)
-    prob = InferenceProblem(seed=seed)
-
     theta = prob.sample_prior(n_sims)
     x = prob.simulate(theta)
-    inference = NPE(prior=prob.prior(), density_estimator="nsf")
+
+    if hidden_features or num_transforms:
+        kw = {}
+        if hidden_features:
+            kw["hidden_features"] = hidden_features
+        if num_transforms:
+            kw["num_transforms"] = num_transforms
+        estimator = posterior_nn(model=density_estimator, **kw)
+    else:
+        estimator = density_estimator
+
+    inference = NPE(prior=prob.prior(), density_estimator=estimator)
     inference.append_simulations(torch.as_tensor(theta, dtype=torch.float32),
                                  torch.as_tensor(x, dtype=torch.float32))
-    inference.train(show_train_summary=True)
-    posterior = inference.build_posterior()
+    inference.train(show_train_summary=verbose, **train_kw)
+    return inference.build_posterior(), theta, x
 
-    theta_true = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+
+def evaluate(prob, posterior, theta_true, n_post=20000, seed=0, label=""):
+    """Sample the posterior, reweight, and return a metrics dict."""
+    import torch
+    rng = np.random.default_rng(seed)
+    saved, prob.rng = prob.rng, rng
     x_obs = prob.simulate_one(theta_true)
-    s = posterior.sample((20000,),
+    prob.rng = saved
+
+    s = posterior.sample((n_post,),
                          x=torch.as_tensor(x_obs, dtype=torch.float32),
                          show_progress_bars=False).numpy()
+    w, eff = importance_reweight(prob, posterior, x_obs, s)
+
+    lo, hi = np.percentile(s[:, 0], [2.5, 97.5])
+    raw = (hi - lo) * 1e3
+    rlo, rhi = weighted_quantile(s[:, 0], [0.025, 0.975], w)
+    rew = (rhi - rlo) * 1e3
+    prior_mHz = (prob.high[0] - prob.low[0]) * 1e3
+    floor = 2 * 1.96 * prob.sigma_f / np.sqrt(3) * 1e3
+    return dict(label=label, raw_mHz=raw, reweighted_mHz=rew,
+                efficiency=eff, floor_mHz=floor, prior_mHz=prior_mHz,
+                raw_over_floor=raw / floor, samples=s, weights=w, x_obs=x_obs)
+
+
+def main():  # pragma: no cover - demo
+    np.set_printoptions(suppress=True)
+    n_sims, seed = 50000, 0
+    prob = InferenceProblem(seed=seed)
+    posterior, _, _ = train_npe(prob, n_sims=n_sims, seed=seed)
+    theta_true = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+    m = evaluate(prob, posterior, theta_true, seed=seed)
 
     print("\n" + "=" * 74)
     print(f"[13C]-formic acid, single-round NPE, {n_sims} simulations")
     print("=" * 74)
-    raw = _report(prob, theta_true, s, None, "Raw NPE posterior")
-    w, eff = importance_reweight(prob, posterior, x_obs, s)
-    rew = _report(prob, theta_true, s, w,
-                  f"After importance reweighting (efficiency {eff:.1%})")
-
-    prior_mHz = (prob.high[0] - prob.low[0]) * 1e3
-    floor = 2 * 1.96 * prob.sigma_f / np.sqrt(3) * 1e3   # 3 multiplet lines
-    print(f"\n  prior width on J        : {prior_mHz:9.1f} mHz")
-    print(f"  raw NPE 95% width       : {raw:9.2f} mHz  ({prior_mHz/raw:.0f}x shrinkage)")
-    print(f"  reweighted 95% width    : {rew:9.2f} mHz  ({prior_mHz/rew:.0f}x shrinkage)")
-    print(f"  information floor       : {floor:9.2f} mHz  (3 lines at sigma_f={prob.sigma_f*1e3:.1f} mHz)")
-    print(f"  sample efficiency       : {eff:9.1%}  (criterion: > 1%)")
+    _report(prob, theta_true, m["samples"], None, "Raw NPE posterior")
+    _report(prob, theta_true, m["samples"], m["weights"],
+            f"After importance reweighting (efficiency {m['efficiency']:.1%})")
+    print(f"\n  prior width on J        : {m['prior_mHz']:9.1f} mHz")
+    print(f"  raw NPE 95% width       : {m['raw_mHz']:9.2f} mHz")
+    print(f"  reweighted 95% width    : {m['reweighted_mHz']:9.2f} mHz")
+    print(f"  information floor       : {m['floor_mHz']:9.2f} mHz")
+    print(f"  sample efficiency       : {m['efficiency']:9.1%}  (criterion: > 1%)")
     print(f"\n  criterion is on the REWEIGHTED posterior, < 10 mHz -> "
-          f"{'PASS' if rew < 10 else 'FAIL'}")
+          f"{'PASS' if m['reweighted_mHz'] < 10 else 'FAIL'}")
 
 
 if __name__ == "__main__":
