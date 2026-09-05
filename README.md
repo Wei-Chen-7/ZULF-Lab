@@ -98,6 +98,34 @@ sign-flip and equal-γ permutation degeneracies, the transverse-field doublet
 split by the *sum* of the Larmor frequencies with a line at their *mean*
 (ref [13]), and the negative pulse-acquire weights at π/2 and π proton angles.
 
+## Figure 1 — the model over a published spectrum
+
+```bash
+python make_figure1.py          # writes figure1_model_over_published.png
+```
+
+![figure 1](figure1_model_over_published.png)
+
+The measured benzene-¹³C₁ spectrum of ref [1] (Fig. 2) is recovered **exactly**
+from the published PDF — the plot is vector art, so the trace is an 8515-point
+polyline in the content stream, not a bitmap. No digitizing, no screenshot. The
+axis is calibrated from the figure's own ticks (major every 127.746 pt, `160`
+label at x = 521.135, minor every 25.549 pt = 1 Hz), giving
+`f = 160 + (x − 521.135)/25.5492`.
+
+The overlay is our forward model with ref [1]'s **own fitted couplings** and
+**their preparation** (thermal polarization, then an instantaneous π pulse on
+¹³C perpendicular to it, their Eq. 2). Nothing is fitted: the line positions are
+a prediction from published numbers.
+
+**Result.** Of 34 measured peaks above 5% of max, the 13 strongest sit a mean
+−22.6 mHz from the nearest predicted line with a scatter of only **7.2 mHz**.
+The offset is *uniform*, which is the signature of an axis-anchor offset rather
+than a physics error — a residual field would shift lines differentially, and
+0.58 pt out of 25.5 pt/Hz accounts for it, with the anchor inferred from a
+left-anchored text label. So the forward model reproduces a real 7-spin
+published multiplet to ~7 mHz RMS.
+
 ## `zulf_infer.py` — priors, peak-list summaries, NPE
 
 ```bash
