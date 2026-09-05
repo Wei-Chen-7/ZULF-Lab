@@ -353,6 +353,34 @@ def evaluate(prob, posterior, theta_true, n_post=20000, seed=0, label=""):
                 raw_over_floor=raw / floor, samples=s, weights=w, x_obs=x_obs)
 
 
+def efficiency_spread(prob, posterior, n_obs=40, n_post=4000, seed=0):
+    """Efficiency and reweighted width over many observations drawn from the prior.
+
+    The project's failure criterion is stated on a single number ("the sample
+    efficiency on real data falls below 1%"), but efficiency is a property of
+    the particular observation, not just of the network. This measures how much
+    it actually moves, which is what says whether a single-observation threshold
+    is meaningful.
+    """
+    import torch
+    rng = np.random.default_rng(seed)
+    saved, prob.rng = prob.rng, rng
+    effs, widths, truths = [], [], []
+    for _ in range(n_obs):
+        theta = prob.sample_prior(1)[0]
+        x_obs = prob.simulate_one(theta)
+        s = posterior.sample((n_post,),
+                             x=torch.as_tensor(x_obs, dtype=torch.float32),
+                             show_progress_bars=False).numpy()
+        w, eff = importance_reweight(prob, posterior, x_obs, s)
+        lo, hi = weighted_quantile(s[:, 0], [0.025, 0.975], w)
+        effs.append(eff)
+        widths.append((hi - lo) * 1e3)
+        truths.append(theta)
+    prob.rng = saved
+    return np.array(effs), np.array(widths), np.array(truths)
+
+
 def main():  # pragma: no cover - demo
     np.set_printoptions(suppress=True)
     n_sims, seed = 50000, 0

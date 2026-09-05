@@ -1,0 +1,32 @@
+[
+  {
+    "label": "baseline: 50k, nsf default",
+    "raw_mHz": 11.109161376964494,
+    "reweighted_mHz": 2.25830078125,
+    "efficiency": 0.12054499249708807,
+    "floor_mHz": 2.263213055223333,
+    "prior_mHz": 6000.0,
+    "raw_over_floor": 4.908579575098044,
+    "train_s": 585.502226153
+  },
+  {
+    "label": "150k sims, nsf default",
+    "raw_mHz": 5.8441162109375,
+    "reweighted_mHz": 2.2430419921875,
+    "efficiency": 0.30283122463079776,
+    "floor_mHz": 2.263213055223333,
+    "prior_mHz": 6000.0,
+    "raw_over_floor": 2.582220970071598,
+    "train_s": 2144.000140651
+  },
+  {
+    "label": "150k sims, nsf wide (96 feat, 8 transforms)",
+    "raw_mHz": 5.2032470703125,
+    "reweighted_mHz": 2.227783203125,
+    "efficiency": 0.09035339615898111,
+    "floor_mHz": 2.263213055223333,
+    "prior_mHz": 6000.0,
+    "raw_over_floor": 2.2990531352334593,
+    "train_s": 2055.2704900730005
+  }
+]
