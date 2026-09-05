@@ -148,14 +148,18 @@ def field_vector(B_magnitude: float, theta_deg: float) -> np.ndarray:
     return np.array([B_magnitude * np.sin(th), 0.0, B_magnitude * np.cos(th)])
 
 
-def hamiltonian(sys: SpinSystem, B=(0.0, 0.0, 0.0)) -> np.ndarray:
+def hamiltonian(sys: SpinSystem, B=(0.0, 0.0, 0.0), J=None) -> np.ndarray:
     """H = 2*pi sum_{i<j} J_ij I_i.I_j  -  2*pi sum_i nu_i (Bhat . I_i).
 
     ``B`` is a 3-vector in microtesla. Matches ref [14] Eqs. (4) and (12).
+    ``J`` optionally overrides ``sys.J`` with another coupling matrix, so a
+    parameter sweep can reuse the cached operators instead of rebuilding the
+    system for every sample.
     """
+    Jm = sys.J if J is None else np.asarray(J, float)
     H = np.zeros((sys.dim, sys.dim), dtype=complex)
     for (i, j), dot in sys._dot.items():
-        Jij = sys.J[i, j]
+        Jij = Jm[i, j]
         if Jij:
             H += _TWO_PI * Jij * dot
     B = np.asarray(B, float)
@@ -286,7 +290,7 @@ def apply_field_pulse(sys: SpinSystem, rho, B_pulse, duration, axis="x"):
 # The line list -- the core primitive
 # ===========================================================================
 def line_list(sys: SpinSystem, rho0=None, B=(0.0, 0.0, 0.0), H=None,
-              amp_tol=1e-12, collapse=True, decimals=9):
+              amp_tol=1e-12, collapse=True, decimals=9, J=None):
     """Exact spectral line list from one diagonalization.
 
     Diagonalizing H = V diag(E) V^dagger and writing rho~ = V^H rho0 V,
@@ -306,7 +310,7 @@ def line_list(sys: SpinSystem, rho0=None, B=(0.0, 0.0, 0.0), H=None,
             S(t) = Re sum_k amps[k] * exp(-2j*pi*freqs[k]*t) + DC
     """
     if H is None:
-        H = hamiltonian(sys, B)
+        H = hamiltonian(sys, B, J=J)
     if rho0 is None:
         rho0 = sys.M
     E, V = np.linalg.eigh(H)
