@@ -96,6 +96,25 @@ def test_glycine_is_a2x_single_line_at_three_halves_J():
     assert len(f) == 1 and np.isclose(f[0], 1.5 * 140.0, atol=1e-6)
 
 
+@pytest.mark.parametrize("name,n_h,J,expect", [
+    ("formic_acid",  1, 221.1, [221.1]),            # XA
+    ("formaldehyde", 2, 163.9, [245.85]),           # XA2 -> 3/2 J, NOT J and 2J
+    ("methanol",     3, 141.0, [141.0, 282.0]),     # XA3 -> J and 2J
+])
+def test_ref6_figure1_measured_spectra(name, n_h, J, expect):
+    """Ref [6] Fig. 1 shows measured XA, XA2 and XA3 spectra with J on the plot.
+
+    Formic acid J = 221.1 Hz peaks at ~221; formaldehyde J = 163.9 Hz peaks at
+    ~246; methanol J = 141.0 Hz peaks at ~141 and ~282. The XA2 case is the
+    decisive one: 3/2 x 163.9 = 245.85 matches the measurement, whereas a
+    "J and 2J" rule would put peaks at 164 and 328, which the figure plainly
+    does not show.
+    """
+    nuclei, Jm = zf._xan("13C", n_h, J)
+    got = np.unique(np.round(peaks(zf.SpinSystem(nuclei, Jm)), 4))
+    assert np.allclose(got, expect, atol=1e-6)
+
+
 # ---------------------------------------------------------------------------
 # Selection rules and exact degeneracies
 # ---------------------------------------------------------------------------
@@ -329,9 +348,9 @@ def test_synth_fid_matches_the_line_list_by_fft():
     S = zf.synth_fid(f, a, t, T2=1.0)
     mag = np.abs(np.fft.rfft(S))
     grid = np.fft.rfftfreq(N, dt)
-    found = grid[np.argsort(-mag)[:2]]
-    assert np.isclose(min(found), 140.0, atol=0.5)
-    assert np.isclose(max(found), 280.0, atol=0.5)
+    found = np.sort(grid[np.argsort(-mag)[:2]])
+    expect = np.sort(f[np.argsort(-np.abs(a))[:2]])   # the two strongest lines
+    assert np.allclose(found, expect, atol=0.5), f"{found} != {expect}"
 
 
 # ---------------------------------------------------------------------------

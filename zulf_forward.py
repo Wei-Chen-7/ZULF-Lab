@@ -440,13 +440,19 @@ def _benzene_13c1():
 
 
 SYSTEMS = {
-    # name: (builder, note)
+    # name: (builder, note).  J values are the published ones where available.
     "formic_acid": (lambda: _xan("13C", 1, 222.2),
-                    "[13C]-formic acid, XA; J = 222.2 Hz (ref [13])"),
+                    "[13C]-formic acid, XA -> one line at J; J = 222.2 Hz "
+                    "(ref [13]; ref [6] Fig. 1 gives 221.1 Hz)"),
+    "formaldehyde": (lambda: _xan("13C", 2, 163.9),
+                     "[13C]-formaldehyde, XA2 -> one line at 3/2 J = 245.85 Hz; "
+                     "J = 163.9 Hz (ref [6] Fig. 1)"),
     "glycine": (lambda: _xan("13C", 2, 140.0),
-                "[1-13C]-glycine, effective A2X -> one line at 3/2 J (ref [13])"),
-    "methanol": (lambda: _xan("13C", 3, 140.0),
-                 "[13C]-methanol methyl, XA3 -> lines at J and 2J (ref [6])"),
+                "[1-13C]-glycine, effective A2X -> one line at 3/2 J (ref [13]); "
+                "J is nominal, not a published value"),
+    "methanol": (lambda: _xan("13C", 3, 141.0),
+                 "[13C]-methanol methyl, XA3 -> lines at J and 2J; "
+                 "J = 141.0 Hz (ref [6] Fig. 1)"),
     "benzene_13c1": (_benzene_13c1,
                      "benzene-13C1, 7 spins, 13 couplings (ref [1] Table I)"),
 }
