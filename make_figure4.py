@@ -127,7 +127,7 @@ def panel_b(ax, seed=SEED, n_starts=60):
         arr, starts = d["multistart_theta"], d["multistart_start"]
         theta_true = d["theta_true"]
     else:
-        theta_true = np.array([141.0, -12.4, 1.0, 55.0, 12.0])
+        theta_true = np.array([141.7, -12.4, 1.0, 55.0, 12.0])
         saved, prob.rng = prob.rng, np.random.default_rng(seed)
         x_obs = prob.simulate_one(theta_true)
         prob.rng = saved

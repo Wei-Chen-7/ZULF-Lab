@@ -23,3 +23,27 @@ CASE A -- [13C]-formic acid: one coupling, four parameters
     100/200
     125/200
     150/200
+    175/200
+    200/200
+
+  reached the global minimum : 100.0% of starts
+  J when it did              : 222.90007 Hz (spread 2.02e-07 Hz)
+  median time per fit        : 1.48 s
+
+----------------------------------------------------------------------------------------
+3. MULTI-MODAL BEHAVIOUR
+----------------------------------------------------------------------------------------
+  distinct minima in J: 1
+      J (Hz)   starts     frac   delta chi2/2
+   222.90007      200   100.0%          0.000
+
+  One basin. On this problem the local fit is not the weak link:
+  it finds the same answer from anywhere in the prior. Any claim
+  that the network wins here would have to be about cost, not
+  correctness -- see case B for where correctness starts to bite.
+
+----------------------------------------------------------------------------------------
+4. AGREEMENT WITH THE EXACT POSTERIOR (nested sampling, same data)
+----------------------------------------------------------------------------------------
+  training/loading the network ...
+ Training neural network. Epochs trained: 1 Training neural network. Epochs trained: 2 Training neural network. Epochs trained: 3 Training neural network. Epochs trained: 4 Training neural network. Epochs trained: 5 Training neural network. Epochs trained: 6 Training neural network. Epochs trained: 7 Training neural network. Epochs trained: 8 Training neural network. Epochs trained: 9 Training neural network. Epochs trained: 10 Training neural network. Epochs trained: 11

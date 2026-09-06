@@ -385,7 +385,7 @@ def case_formic(seed=0, n_starts=200, n_sims=150_000, n_post=20000):  # pragma: 
 def case_methanol(seed=0, n_starts=60, n_sims=60_000):  # pragma: no cover
     prob = zi.InferenceProblem(system="methanol", seed=seed)
     names = prob.param_names
-    theta_true = np.array([141.0, -12.4, 1.0, 55.0, 12.0])
+    theta_true = np.array([141.7, -12.4, 1.0, 55.0, 12.0])
     saved, prob.rng = prob.rng, np.random.default_rng(seed)
     x_obs = prob.simulate_one(theta_true)
     prob.rng = saved

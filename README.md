@@ -7,13 +7,22 @@ model plus simulation-based-inference stack built on top of it.
 
 ```bash
 pip install -r requirements.txt
-pytest -q                    # 79 tests, all physics claims are encoded here
+pytest -q                    # 131 tests, all physics claims are encoded here
 
 python zulf_nmr.py           # interactive teaching simulator
 python zulf_forward.py       # forward-model smoke demo
-python make_figure1.py       # model over a published spectrum
 python nested_reference.py   # exact-likelihood reference posterior
+python methanol_demo.py      # four spins: a measured coupling and a flat one
+python local_baseline.py     # the least-squares baseline, three cases
+python resolution_cliffs.py  # where a peak-list summary jumps, and what it costs
+
+python make_figure1.py       # model over a published spectrum
+python make_figure2.py       # the posterior and its spread
+python make_figure4.py       # vs exact sampling and vs a least-squares fit
 ```
+
+Trained networks are cached under `models/` and reused across scripts, so the
+figure scripts are cheap after the first run.
 
 Everything is built from scratch with NumPy/SciPy/Matplotlib (no qutip, no
 spin-dynamics libraries — the operators and propagation are written by hand so

@@ -32,12 +32,12 @@ def main():
     print(f"[13C]-methanol, {prob.sys.n} spins, "
           f"{len(prob.param_names)} free parameters: {prob.param_names}")
     print(f"summary vector length {prob.x_dim()}")
-    print(f"training NPE on {N_SIMS} simulations ...", flush=True)
-    posterior, _, _ = zi.train_npe(prob, n_sims=N_SIMS, seed=SEED,
-                                   verbose=False, max_num_epochs=150)
+    print(f"training/loading NPE on {N_SIMS} simulations ...", flush=True)
+    posterior, _ = zi.train_or_load(prob, tag="methanol_60k", n_sims=N_SIMS,
+                                    seed=SEED, max_num_epochs=150)
 
     # A truth with a deliberately non-zero J_HH, to show it cannot be recovered.
-    theta_true = np.array([141.0, -12.4, 1.0, 55.0, 12.0])
+    theta_true = np.array([141.7, -12.4, 1.0, 55.0, 12.0])
     m = zi.evaluate(prob, posterior, theta_true, seed=SEED, label="methanol")
     s, w = m["samples"], m["weights"]
 

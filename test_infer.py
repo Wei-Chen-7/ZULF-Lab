@@ -280,3 +280,58 @@ def test_in_prior_flags_out_of_box_samples():
     bad[:, 2] = 150.0                                # beyond the 90 deg cut
     assert p.in_prior(good).all()
     assert not p.in_prior(bad).any()
+
+
+# -- model persistence -------------------------------------------------------
+def _tiny(prob, tag, tmpdir, **kw):
+    return zi.train_or_load(prob, tag=tag, n_sims=400, seed=0,
+                            model_dir=str(tmpdir), max_num_epochs=2,
+                            training_batch_size=100, **kw)
+
+
+def test_train_or_load_writes_then_reuses(tmp_path):
+    prob = zi.InferenceProblem(seed=0)
+    _, meta = _tiny(prob, "t", tmp_path)
+    assert (tmp_path / "t.pt").exists()
+    assert meta["train_seconds"] > 0
+    _, meta2 = _tiny(prob, "t", tmp_path)
+    assert "train_seconds" not in meta2 or meta2["train_seconds"] == \
+        meta["train_seconds"]                      # loaded, not retrained
+
+
+def test_loaded_posterior_samples_the_same_shape(tmp_path):
+    import torch
+    prob = zi.InferenceProblem(seed=0)
+    post, _ = _tiny(prob, "s", tmp_path)
+    x = prob.simulate_one(prob.sample_prior(1)[0])
+    draws = post.sample((16,), x=torch.as_tensor(x, dtype=torch.float32),
+                        show_progress_bars=False).numpy()
+    assert draws.shape == (16, len(prob.param_names))
+
+
+def test_a_stale_signature_forces_a_retrain(tmp_path):
+    """A network trained on a different observation model must not be reused."""
+    a = zi.InferenceProblem(seed=0)
+    _tiny(a, "sig", tmp_path)
+    b = zi.InferenceProblem(seed=0, merge_hz=0.05)   # different summary
+    _, meta = _tiny(b, "sig", tmp_path)
+    assert "train_seconds" in meta                  # retrained, not reused
+    assert meta["signature"] == repr(sorted(b.summary_signature().items()))
+
+
+def test_force_retrains_even_on_a_hit(tmp_path):
+    prob = zi.InferenceProblem(seed=0)
+    _, m1 = _tiny(prob, "f", tmp_path)
+    _, m2 = _tiny(prob, "f", tmp_path, force=True)
+    assert m2["train_seconds"] > 0 and m2 is not m1
+
+
+def test_save_and_load_round_trip_carries_metadata(tmp_path):
+    prob = zi.InferenceProblem(seed=0)
+    post, _ = _tiny(prob, "rt", tmp_path)
+    path = zi.save_posterior(post, "rt2", meta=dict(note="hello"),
+                             model_dir=str(tmp_path))
+    assert path.endswith("rt2.pt")
+    _, meta = zi.load_posterior("rt2", model_dir=str(tmp_path))
+    assert meta["note"] == "hello"
+    assert "sbi_version" in meta and "torch_version" in meta

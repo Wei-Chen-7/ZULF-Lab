@@ -32,10 +32,10 @@ def main():
     np.set_printoptions(suppress=True)
     prob = zi.InferenceProblem(seed=SEED)
 
-    print(f"training NPE on {N_SIMS} simulations (the sweep winner) ...",
+    print(f"training/loading NPE on {N_SIMS} simulations (the sweep winner) ...",
           flush=True)
-    posterior, _, _ = zi.train_npe(prob, n_sims=N_SIMS, seed=SEED, verbose=False,
-                                   max_num_epochs=150)
+    posterior, _ = zi.train_or_load(prob, tag="formic_acid_150k", n_sims=N_SIMS,
+                                    seed=SEED, max_num_epochs=150)
 
     # ---- 1. calibration -------------------------------------------------
     n_trials, n_post = 300, 99
