@@ -145,7 +145,7 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
 
     rng = np.random.default_rng(seed)
     saved, prob.rng = prob.rng, rng
-    effs, dists, widths = [], [], []
+    effs, dists, widths, truths = [], [], [], []
     for k in range(n_obs):
         t = prob.sample_prior(1)[0]
         x_obs = prob.simulate_one(t)
@@ -157,10 +157,12 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
         effs.append(eff)
         widths.append((hi - lo) * 1e3)
         dists.append(distance_to_cliff(prob, t, n=300))
+        truths.append(t)
         if (k + 1) % 20 == 0:
             print(f"    {k + 1}/{n_obs}", flush=True)
     prob.rng = saved
     effs, dists, widths = np.array(effs), np.array(dists), np.array(widths)
+    truths = np.array(truths)
 
     finite = np.isfinite(dists)
     print(f"\n  observations with a cliff anywhere in their box : "
@@ -181,6 +183,39 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
         verdict = ("cliffs explain the spread" if (rho > 0.3 and p < 0.05)
                    else "no clear link -- the spread has another cause")
         print(f"  -> {verdict}")
+
+    # ---- 3. then what does? ----------------------------------------------
+    from scipy import stats
+    print("\n" + "-" * 84)
+    print("3. WHAT DOES PREDICT EFFICIENCY?")
+    print("-" * 84)
+    print("  The failure criterion is stated on efficiency, so if cliffs are")
+    print("  not the driver it is worth knowing what is.\n")
+    print(f"{'quantity':>28} {'Spearman rho':>13} {'p':>10}")
+    cands = [(n, truths[:, i]) for i, n in enumerate(prob.param_names)]
+    # how close the truth sits to the edge of the prior box, in prior units
+    u = (truths - prob.low) / prob.prior_span()
+    cands.append(("distance to prior edge", np.min(np.minimum(u, 1 - u), axis=1)))
+    cands.append(("distance to cliff", dists))
+    cands.append(("reweighted width on J", widths))
+    best = []
+    for name, v in cands:
+        ok = np.isfinite(v)
+        if ok.sum() < 5 or np.ptp(v[ok]) == 0:
+            continue
+        rho, p = stats.spearmanr(v[ok], effs[ok])
+        flag = " <--" if p < 0.01 else ""
+        print(f"{name:>28} {rho:>13.3f} {p:>10.3g}{flag}")
+        if p < 0.01:
+            best.append((name, rho))
+    if best:
+        print("\n  Significant at p < 0.01: "
+              + ", ".join(f"{n} ({r:+.2f})" for n, r in best))
+    else:
+        print("\n  Nothing here predicts it. The spread is a property of the")
+        print("  trained flow's local fit to the posterior, not of the physics,")
+        print("  which is an argument for quoting efficiency over several")
+        print("  spectra rather than trusting one reading.")
 
     # ---- figure -----------------------------------------------------------
     fig, axes = plt.subplots(1, 2, figsize=(11, 4))
@@ -210,7 +245,9 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
     fig.savefig("resolution_cliffs.png", dpi=140, facecolor="white",
                 bbox_inches="tight")
 
-    np.savez("resolution_cliffs.npz", effs=effs, dists=dists, widths=widths)
+    np.savez("resolution_cliffs.npz", effs=effs, dists=dists,
+             widths=widths, truths=truths,
+             param_names=np.array(prob.param_names))
     print("\nwrote resolution_cliffs.png and resolution_cliffs.npz")
 
 
