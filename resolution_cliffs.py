@@ -11,15 +11,20 @@ consequences the project has to state rather than discover later on real
 spectra:
 
 * a local optimizer cannot cross a jump, so the chi-square surface is carved
-  into basins that have nothing to do with the physics;
-* the importance weights near a jump are erratic, because the network's smooth
-  density is approximating something that is not smooth;
-* and so sampling efficiency -- the project's own failure criterion -- depends
-  on where the observation happens to sit relative to the nearest jump.
+  into basins that have nothing to do with the physics; and
+* the importance weights near a jump could be erratic, because the network's
+  smooth density is approximating something that is not smooth.
 
-The earlier efficiency sweep found a 40x spread across observations drawn from
-the same prior with the same network. This module tests whether proximity to a
-resolution cliff is the explanation.
+That second point was the hypothesis for the ~30x spread in sampling efficiency
+across observations drawn from the same prior with the same network. **It is
+wrong.** Spearman rho between distance-to-cliff and efficiency is -0.06
+(p = 0.64) over 60 observations. Recorded here rather than dropped, because the
+project's failure criterion is stated on efficiency and a plausible-sounding
+explanation that happens to be false is worse than an open question.
+
+What does correlate is the true J_CH itself (rho = -0.38), i.e. the flow fits
+its own posterior less well toward the top of the J prior. That is a property of
+the trained network, not of the physics.
 
 One class of cliff was an outright bug and is gone: the merge threshold used to
 be the model's own linewidth, so it moved with the fitted T2 and made the
@@ -191,26 +196,39 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
     print("-" * 84)
     print("  The failure criterion is stated on efficiency, so if cliffs are")
     print("  not the driver it is worth knowing what is.\n")
-    print(f"{'quantity':>28} {'Spearman rho':>13} {'p':>10}")
+    print(f"{'quantity':>28} {'Spearman rho':>13} {'p':>10} {'p (adj)':>10}")
     cands = [(n, truths[:, i]) for i, n in enumerate(prob.param_names)]
     # how close the truth sits to the edge of the prior box, in prior units
     u = (truths - prob.low) / prob.prior_span()
     cands.append(("distance to prior edge", np.min(np.minimum(u, 1 - u), axis=1)))
     cands.append(("distance to cliff", dists))
     cands.append(("reweighted width on J", widths))
-    best = []
+    rows, n_tested = [], 0
     for name, v in cands:
         ok = np.isfinite(v)
         if ok.sum() < 5 or np.ptp(v[ok]) == 0:
             continue
         rho, p = stats.spearmanr(v[ok], effs[ok])
-        flag = " <--" if p < 0.01 else ""
-        print(f"{name:>28} {rho:>13.3f} {p:>10.3g}{flag}")
-        if p < 0.01:
-            best.append((name, rho))
+        rows.append((name, rho, p))
+        n_tested += 1
+    best = []
+    for name, rho, p in rows:
+        # Several candidates are being screened at once, so the raw p-value
+        # overstates the evidence; Bonferroni is the conservative correction.
+        p_adj = min(1.0, p * n_tested)
+        flag = " <--" if p_adj < 0.05 else ""
+        print(f"{name:>28} {rho:>13.3f} {p:>10.3g} {p_adj:>10.3g}{flag}")
+        if p_adj < 0.05:
+            best.append((name, rho, p_adj))
     if best:
-        print("\n  Significant at p < 0.01: "
-              + ", ".join(f"{n} ({r:+.2f})" for n, r in best))
+        print(f"\n  Surviving a Bonferroni correction over {n_tested} candidates: "
+              + ", ".join(f"{n} ({r:+.2f}, p_adj = {pa:.3f})"
+                          for n, r, pa in best))
+        print("  This is where the flow fits the posterior least well, not a")
+        print("  property of the physics -- distance to the prior boundary and")
+        print("  distance to a cliff both come back flat. Suggestive at n = 60,")
+        print("  not established; the practical consequence either way is that")
+        print("  the efficiency criterion should be read over several spectra.")
     else:
         print("\n  Nothing here predicts it. The spread is a property of the")
         print("  trained flow's local fit to the posterior, not of the physics,")

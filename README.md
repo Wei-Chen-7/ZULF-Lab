@@ -270,12 +270,17 @@ failure criterion, which is stated as a single number: the same network on the
 same model reads 1.6% on one spectrum and 45% on another. Quoting it over several
 spectra, or with its spread, would be more robust than a single reading.
 
-*What drives the spread is not settled.* The obvious candidate — proximity to a
-resolution cliff, where the peak count changes and the network's smooth density
-is approximating something that is not smooth — is **refuted**: Spearman
-ρ = −0.06 (p = 0.64) over 60 observations. `resolution_cliffs.py` regresses
-efficiency against every parameter and against distance to the prior boundary
-as well, so the driver is looked for rather than assumed.
+*What drives the spread.* The obvious candidate — proximity to a resolution
+cliff, where the peak count changes and the network's smooth density is
+approximating something that is not smooth — is **refuted**: Spearman ρ = −0.06
+(p = 0.68) over 60 observations. Screening seven candidates, the only one to
+survive a Bonferroni correction is the true J_CH itself (ρ = −0.38,
+p_adj = 0.019): efficiency degrades toward the top of the J prior. Distance to
+the prior boundary is flat (ρ = 0.18), so it is not an edge effect either.
+
+That points at the flow's own fit to the posterior rather than at the physics.
+Suggestive at n = 60, not established — but the practical consequence is the
+same either way: **read the efficiency criterion over several spectra, not one.**
 
 **Against nested sampling on the exact likelihood**, on the same observation:
 
