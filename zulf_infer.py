@@ -41,7 +41,9 @@ __all__ = [
     "InferenceProblem", "PARAM_NAMES", "merge_lines", "peak_summary",
 ]
 
-PARAM_NAMES = ("J_Hz", "B_nT", "B_theta_deg", "T2_s")
+#: Default parameter names (the two-spin case). A problem's own ordering is
+#: always ``prob.param_names``, which grows with the coupling classes.
+PARAM_NAMES = ("J_CH", "B_nT", "B_theta_deg", "T2_s")
 
 # log10 amplitude assigned to an absent line. A missing line genuinely means
 # zero amplitude, so flooring the amplitude (rather than inventing a frequency)
@@ -117,37 +119,76 @@ def peak_summary(freqs, amps, width_hz, J_center, n_low=1, n_high=3,
     return np.concatenate([lf, la, hf, ha, [np.log10(width_hz)]])
 
 
+#: Symmetry-distinct coupling classes per system, as
+#: ``(name, [(i, j), ...], prior centre in Hz, prior half-width in Hz)``.
+#:
+#: Parameterizing by symmetry-distinct couplings rather than by all N(N-1)/2
+#: pairs is the point: a posterior over every pair would report the prior back
+#: in the flat directions while looking like a result. The J_HH class inside an
+#: equivalent proton group is kept deliberately, with a wide prior, because it
+#: is the textbook flat direction -- the Delta I_A = 0 selection rule makes it
+#: move no line at all -- and the posterior should say so out loud.
+COUPLING_CLASSES = {
+    "formic_acid": [("J_CH", [(0, 1)], 222.2, 3.0)],
+    "glycine": [("J_CH", [(0, 1), (0, 2)], 140.0, 3.0),
+                ("J_HH", [(1, 2)], 0.0, 15.0)],
+    "methanol": [("J_CH", [(0, 1), (0, 2), (0, 3)], 141.0, 3.0),
+                 ("J_HH", [(1, 2), (1, 3), (2, 3)], 0.0, 15.0)],
+    "formaldehyde": [("J_CH", [(0, 1), (0, 2)], 163.9, 3.0),
+                     ("J_HH", [(1, 2)], 0.0, 15.0)],
+}
+
+#: How many lines to keep in each summary group, per system.
+SUMMARY_SHAPE = {
+    "formic_acid": (1, 3),
+    "glycine": (1, 4),
+    "formaldehyde": (1, 4),
+    "methanol": (2, 6),
+}
+
+
 class InferenceProblem:
     """A ZULF inference problem: prior, simulator and summary in one object.
 
     Parameters
     ----------
     system : str
-        Name of a preset in :data:`zulf_forward.SYSTEMS`.
-    J_center : float
-        Centre of the coupling prior, i.e. the DFT/ML predicted value.
-    J_half : float
-        Half-width of the coupling prior in Hz. Ref [18] quotes ~1 Hz accuracy
-        for 1J_CH, so a few Hz is a faithful and still conservative choice.
+        Name of a preset in :data:`COUPLING_CLASSES`. The free couplings are
+        that system's symmetry-distinct classes, followed by the three nuisance
+        parameters (residual field magnitude and angle, relaxation).
+    classes : list, optional
+        Override the coupling classes, in the format of
+        :data:`COUPLING_CLASSES`. Use this for a molecule with no preset.
     B_max_nT, T2_range :
         Wide nuisance priors on the residual field and relaxation.
     sigma_f : float
         Standard deviation of the peak-position measurement error, in Hz. This
-        stands in for the whole acquisition and SNR chain: published ZULF work
-        reaches ~1 mHz on a fitted line, so 1e-3 is the realistic default.
+        stands in for the whole acquisition and SNR chain. Measured in
+        ``sigma_f_study.py`` to be about FWHM/(1.3 x SNR), so the 1 mHz default
+        corresponds to roughly SNR 24 at T2 = 10 s -- a conservative choice.
     sigma_logamp : float
         Standard deviation of the log10 amplitude error.
     """
 
-    def __init__(self, system="formic_acid", J_center=222.2, J_half=3.0,
-                 B_max_nT=2.0, T2_range=(3.0, 40.0),
-                 sigma_f=1e-3, sigma_logamp=0.03, seed=0, theta_max_deg=90.0):
+    def __init__(self, system="formic_acid", classes=None, J_center=None,
+                 J_half=None, B_max_nT=2.0, T2_range=(3.0, 40.0),
+                 sigma_f=1e-3, sigma_logamp=0.03, seed=0, theta_max_deg=90.0,
+                 summary_shape=None):
+        self.system = system
         self.sys = zf.build_system(system)
-        if self.sys.n != 2:
-            raise NotImplementedError(
-                "the two-spin problem is the one the failure criterion names; "
-                "larger systems need a richer parameterization of J")
-        self.J_center = float(J_center)
+        self.classes = list(classes if classes is not None
+                            else COUPLING_CLASSES[system])
+        if J_center is not None or J_half is not None:      # tweak the first class
+            name, pairs, c, h = self.classes[0]
+            self.classes[0] = (name, pairs,
+                               c if J_center is None else float(J_center),
+                               h if J_half is None else float(J_half))
+        self.n_low, self.n_high = (summary_shape or
+                                   SUMMARY_SHAPE.get(system, (1, 4)))
+        # Reference for the high-frequency offsets: the centre of the dominant
+        # coupling prior, so the network sees numbers of order 0.1 Hz.
+        self.J_center = float(self.classes[0][2])
+
         # The field angle prior stops at 90 degrees on purpose. theta and
         # 180 - theta give bit-identical spectra: R_x(pi) maps B=(Bx,0,Bz) to
         # (Bx,0,-Bz) and sends both rho(0)=M and M to -M, leaving
@@ -155,16 +196,32 @@ class InferenceProblem:
         # Restricting the prior removes the degeneracy by convention, exactly
         # as a canonical ordering removes the equal-gamma permutations. Without
         # it the posterior is bimodal and its mean is a meaningless number.
-        self.low = np.array([J_center - J_half, 0.0, 0.0, T2_range[0]])
-        self.high = np.array([J_center + J_half, B_max_nT, theta_max_deg,
-                              T2_range[1]])
+        jlo = [c - h for _, _, c, h in self.classes]
+        jhi = [c + h for _, _, c, h in self.classes]
+        self.low = np.array(jlo + [0.0, 0.0, T2_range[0]])
+        self.high = np.array(jhi + [B_max_nT, theta_max_deg, T2_range[1]])
+        self.param_names = [n for n, _, _, _ in self.classes] + \
+            ["B_nT", "B_theta_deg", "T2_s"]
+        self.n_couplings = len(self.classes)
         self.sigma_f = float(sigma_f)
         self.sigma_logamp = float(sigma_logamp)
         self.rng = np.random.default_rng(seed)
 
+    def J_matrix(self, theta):
+        """Build the full J matrix from the coupling-class values in theta."""
+        n = self.sys.n
+        J = np.zeros((n, n))
+        for k, (_, pairs, _, _) in enumerate(self.classes):
+            for i, j in pairs:
+                J[i, j] = J[j, i] = float(theta[k])
+        return J
+
+    def prior_span(self):
+        return self.high - self.low
+
     # -- prior -------------------------------------------------------------
     def prior(self):
-        """A box-uniform prior over ``PARAM_NAMES`` as a torch distribution."""
+        """A box-uniform prior over ``self.param_names`` as a torch distribution."""
         import torch
         from sbi.utils import BoxUniform
         return BoxUniform(low=torch.as_tensor(self.low, dtype=torch.float32),
@@ -174,9 +231,6 @@ class InferenceProblem:
         return self.rng.uniform(self.low, self.high, size=(n, len(self.low)))
 
     # -- simulator ---------------------------------------------------------
-    #: slot indices for (frequency-like, amplitude-like) entries of the summary
-    _N_LOW, _N_HIGH = 1, 3
-
     def slot_sigmas(self):
         """Per-slot noise scale, matching :meth:`simulate_one` exactly.
 
@@ -184,7 +238,7 @@ class InferenceProblem:
         plain Gaussian with no delta functions. That is what makes the exact
         log-likelihood below available, and hence importance reweighting.
         """
-        nl, nh = self._N_LOW, self._N_HIGH
+        nl, nh = self.n_low, self.n_high
         sig = np.empty(2 * nl + 2 * nh + 1)
         sig[:nl] = self.sigma_f                       # low-frequency positions
         sig[nl:2 * nl] = self.sigma_logamp            # low-frequency amplitudes
@@ -195,12 +249,14 @@ class InferenceProblem:
 
     def simulate_one(self, theta, noisy=True):
         """One parameter vector -> one summary vector."""
-        J, B_nT, ang, T2 = (float(v) for v in theta)
-        Jm = np.array([[0.0, J], [J, 0.0]])
+        theta = np.asarray(theta, float)
+        Jm = self.J_matrix(theta)
+        B_nT, ang, T2 = (float(v) for v in theta[self.n_couplings:])
         B = zf.field_vector(B_nT * 1e-3, ang)          # nT -> uT
         f, a = zf.line_list(self.sys, B=B, J=Jm)
         width = 1.0 / (np.pi * T2)                     # absorption FWHM
-        x = peak_summary(f, a, width, self.J_center)
+        x = peak_summary(f, a, width, self.J_center,
+                         n_low=self.n_low, n_high=self.n_high)
         if noisy:
             x = x + self.rng.normal(0.0, self.slot_sigmas())
         return x
@@ -279,7 +335,7 @@ def importance_reweight(prob, posterior, x_obs, samples):
 def _report(prob, theta_true, s, w=None, label=""):
     print(f"\n{label}")
     print("-" * len(label))
-    for i, name in enumerate(PARAM_NAMES):
+    for i, name in enumerate(prob.param_names):
         if w is None:
             lo, hi = np.percentile(s[:, i], [2.5, 97.5])
             mean = s[:, i].mean()
@@ -351,6 +407,34 @@ def evaluate(prob, posterior, theta_true, n_post=20000, seed=0, label=""):
     return dict(label=label, raw_mHz=raw, reweighted_mHz=rew,
                 efficiency=eff, floor_mHz=floor, prior_mHz=prior_mHz,
                 raw_over_floor=raw / floor, samples=s, weights=w, x_obs=x_obs)
+
+
+def shrinkage(prob, samples, weights=None, q=(0.025, 0.975)):
+    """How far each posterior moved from its prior, per parameter.
+
+    Returns a list of dicts with the prior and posterior widths and
+
+        shrinkage = 1 - posterior width / prior width
+
+    which is ~0 for a direction the data does not constrain and ~1 for one it
+    pins down. Reporting this is the point of parameterizing by
+    symmetry-distinct couplings: a flat direction becomes visible instead of
+    being quietly reported back as the prior while looking like a result.
+    """
+    span = prob.prior_span()
+    out = []
+    for i, name in enumerate(prob.param_names):
+        if weights is None:
+            lo, hi = np.percentile(samples[:, i], [100 * q[0], 100 * q[1]])
+        else:
+            lo, hi = weighted_quantile(samples[:, i], q, weights)
+        width = hi - lo
+        prior_width = span[i] * (q[1] - q[0])   # the prior is uniform on the box
+        out.append(dict(param=name, prior_width=prior_width,
+                        post_width=width,
+                        shrinkage=1.0 - width / prior_width,
+                        constrained=(1.0 - width / prior_width) > 0.5))
+    return out
 
 
 def efficiency_spread(prob, posterior, n_obs=40, n_post=4000, seed=0):

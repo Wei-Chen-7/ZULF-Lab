@@ -47,13 +47,14 @@ def main():
     print("=" * 88)
     print(f"{'param':>12} {'chi2 p':>9} {'KS p':>9} {'outer20%':>10} "
           f"{'centre20%':>10}  verdict")
-    rows = sc.diagnose(ranks, n_post)
+    rows = sc.diagnose(ranks, n_post, names=prob.param_names)
     for r in rows:
         print(f"{r['param']:>12} {r['p_chi2']:>9.3f} {r['p_ks']:>9.3f} "
               f"{r['outer']:>10.3f} {r['centre']:>10.3f}  {r['verdict']}")
     print("  (both fractions are 0.20 when calibrated)")
     sc.plot_ranks(ranks, n_post, path="sbc_ranks.png",
-                  title=f"SBC ranks, NPE trained on {N_SIMS} simulations")
+                  title=f"SBC ranks, NPE trained on {N_SIMS} simulations",
+                  names=prob.param_names)
     np.save("sbc_ranks.npy", ranks)
 
     # ---- 2. efficiency spread -------------------------------------------

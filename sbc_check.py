@@ -48,10 +48,11 @@ def run_sbc(prob, posterior, n_trials=300, n_post=99, seed=0, verbose=True):
     return ranks
 
 
-def diagnose(ranks, n_post, n_bins=20):
+def diagnose(ranks, n_post, n_bins=20, names=None):
     """Uniformity test plus a plain-language reading of the failure mode."""
     out = []
     n_trials = len(ranks)
+    names = list(names or zi.PARAM_NAMES)
     for d in range(ranks.shape[1]):
         r = ranks[:, d] / n_post                      # to [0, 1]
         # chi-square against uniform
@@ -84,18 +85,20 @@ def diagnose(ranks, n_post, n_bins=20):
             verdict = f"shifted -> biased (mean rank {r.mean():.3f}, not 0.5)"
         else:
             verdict = "non-uniform -> shape differs, no clear direction"
-        out.append(dict(param=zi.PARAM_NAMES[d], chi2=chi2, p_chi2=p_chi2,
+        out.append(dict(param=names[d], chi2=chi2, p_chi2=p_chi2,
                         p_ks=p_ks, outer=outer, centre=centre,
                         z_outer=z_outer, z_centre=z_centre, z_shift=z_shift,
                         verdict=verdict))
     return out
 
 
-def plot_ranks(ranks, n_post, path="sbc_ranks.png", n_bins=20, title=""):
+def plot_ranks(ranks, n_post, path="sbc_ranks.png", n_bins=20, title="",
+               names=None):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     n_trials, n_par = ranks.shape
+    names = list(names or zi.PARAM_NAMES)
     fig, axes = plt.subplots(1, n_par, figsize=(3.1 * n_par, 3.0), sharey=True)
     expect = n_trials / n_bins
     band = 1.96 * np.sqrt(expect * (1 - 1 / n_bins))
@@ -104,7 +107,7 @@ def plot_ranks(ranks, n_post, path="sbc_ranks.png", n_bins=20, title=""):
                 color="#2a9d8f", edgecolor="white")
         ax.axhline(expect, color="#22333b", lw=1)
         ax.axhspan(expect - band, expect + band, color="#e76f51", alpha=0.15)
-        ax.set_title(zi.PARAM_NAMES[d], fontsize=10)
+        ax.set_title(names[d], fontsize=10)
         ax.set_xlabel("rank / L")
     np.atleast_1d(axes)[0].set_ylabel("count")
     fig.suptitle(title or "Simulation-based calibration: ranks should be uniform",
@@ -129,12 +132,12 @@ def main():  # pragma: no cover - study
     print("=" * 86)
     print(f"{'param':>12} {'chi2 p':>9} {'KS p':>9} {'outer20%':>10} "
           f"{'centre20%':>10}  verdict")
-    for row in diagnose(ranks, n_post):
+    for row in diagnose(ranks, n_post, names=prob.param_names):
         print(f"{row['param']:>12} {row['p_chi2']:>9.3f} {row['p_ks']:>9.3f} "
               f"{row['outer']:>10.3f} {row['centre']:>10.3f}  {row['verdict']}")
     print("\n  (both fractions are 0.20 when calibrated)")
 
-    path = plot_ranks(ranks, n_post)
+    path = plot_ranks(ranks, n_post, names=prob.param_names)
     np.save("sbc_ranks.npy", ranks)
     print(f"\n  wrote {path} and sbc_ranks.npy")
 

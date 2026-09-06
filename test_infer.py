@@ -138,9 +138,65 @@ def test_simulate_is_batched_and_finite():
     assert np.all(np.isfinite(X))
 
 
-def test_larger_systems_are_refused_for_now():
-    with pytest.raises(NotImplementedError):
-        zi.InferenceProblem(system="methanol")
+# ---------------------------------------------------------------------------
+# multi-spin problems
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("name,n_par,n_spin", [
+    ("formic_acid", 4, 2), ("glycine", 5, 3),
+    ("formaldehyde", 5, 3), ("methanol", 5, 4),
+])
+def test_multi_spin_problems_build(name, n_par, n_spin):
+    p = zi.InferenceProblem(system=name)
+    assert p.sys.n == n_spin
+    assert len(p.param_names) == n_par == len(p.low) == len(p.high)
+    assert p.param_names[-3:] == ["B_nT", "B_theta_deg", "T2_s"]
+    x = p.simulate_one(p.sample_prior(1)[0], noisy=False)
+    assert len(x) == p.x_dim() and np.all(np.isfinite(x))
+
+
+def test_J_matrix_assigns_every_pair_in_a_class():
+    p = zi.InferenceProblem(system="methanol")
+    J = p.J_matrix(np.array([141.0, -12.4, 1.0, 55.0, 12.0]))
+    assert np.allclose(J, J.T)
+    for j in (1, 2, 3):
+        assert np.isclose(J[0, j], 141.0)          # every C-H pair
+    for i, j in ((1, 2), (1, 3), (2, 3)):
+        assert np.isclose(J[i, j], -12.4)          # every H-H pair
+    assert np.allclose(np.diag(J), 0.0)
+
+
+@pytest.mark.parametrize("J_HH", [5.0, -12.4, 15.0])
+def test_J_HH_inside_an_equivalent_group_is_a_flat_direction(J_HH):
+    """Delta I_A = 0 means J_HH moves no line, so it cannot be measured.
+
+    This is the methanol identifiability case: five of the six pairwise
+    couplings are unmeasurable, and the summary must be literally unchanged.
+    """
+    p = zi.InferenceProblem(system="methanol")
+    base = p.simulate_one(np.array([141.0, 0.0, 1.0, 55.0, 12.0]), noisy=False)
+    alt = p.simulate_one(np.array([141.0, J_HH, 1.0, 55.0, 12.0]), noisy=False)
+    assert np.allclose(base, alt, atol=1e-9)
+
+
+def test_likelihood_is_flat_in_an_unmeasurable_coupling():
+    p = zi.InferenceProblem(system="methanol", seed=11)
+    x = p.simulate_one(np.array([141.0, 3.0, 1.0, 55.0, 12.0]))
+    lls = p.log_likelihood(x, np.array([[141.0, j, 1.0, 55.0, 12.0]
+                                        for j in (-10.0, 0.0, 7.0, 14.0)]))
+    assert np.allclose(lls, lls[0], atol=1e-6), lls
+
+
+def test_shrinkage_separates_measured_from_flat_directions():
+    """A flat direction must report ~0 shrinkage, not a confident number."""
+    p = zi.InferenceProblem(system="methanol", seed=3)
+    rng = np.random.default_rng(0)
+    s = rng.uniform(p.low, p.high, size=(4000, len(p.low)))   # = the prior
+    s[:, 0] = 141.0 + rng.normal(0, 1e-3, 4000)               # J_CH pinned
+    rows = {r["param"]: r for r in zi.shrinkage(p, s)}
+    assert rows["J_CH"]["shrinkage"] > 0.99
+    assert rows["J_CH"]["constrained"]
+    assert abs(rows["J_HH"]["shrinkage"]) < 0.1
+    assert not rows["J_HH"]["constrained"]
 
 
 # ---------------------------------------------------------------------------

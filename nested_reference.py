@@ -75,7 +75,7 @@ def main():  # pragma: no cover - study
     print(f"  log Z = {logz:.3f} +/- {logzerr:.3f}\n")
 
     print(f"{'parameter':>12} {'true':>10} {'mean':>11} {'95% interval':>26} {'width':>10}")
-    for i, name in enumerate(zi.PARAM_NAMES):
+    for i, name in enumerate(prob.param_names):
         lo, hi = zi.weighted_quantile(samples[:, i], [0.025, 0.975], w)
         mean = np.average(samples[:, i], weights=w)
         print(f"{name:>12} {theta_true[i]:>10.4f} {mean:>11.4f} "
