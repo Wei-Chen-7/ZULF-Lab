@@ -1,0 +1,4 @@
+# Run logs — regenerated on every run, and they churn while a study is going.
+*.log
+__pycache__/
+sbi-logs/

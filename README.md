@@ -28,6 +28,25 @@ Everything is built from scratch with NumPy/SciPy/Matplotlib (no qutip, no
 spin-dynamics libraries — the operators and propagation are written by hand so
 the physics is explicit).
 
+### Status: what is done, and what is waiting on data
+
+| Deliverable | State |
+|---|---|
+| Forward model, validated against published spectra | done — 7.2 mHz RMS on ref [1]'s benzene multiplet |
+| Priors, peak-list summaries, amortized NPE | done |
+| Trained networks for a few small molecules | done — `models/`, four molecules |
+| Calibration (SBC), efficiency, exact-likelihood reference | done |
+| Comparison against a least-squares fit | done — three cases, all on simulated data |
+| Figure 1 — model over a published spectrum | done |
+| Figure 2 — the posterior and its spread | done |
+| Figure 3 — the calibration check | done |
+| Figure 4 — vs exact sampling and vs ref [1] | done |
+| **Figure 5 — the answer on real data** | **needs the group's archived spectra** |
+
+Everything except the last row runs on simulated data and is reproducible from
+this repository. The archived spectra (and the pulse sequences that produced
+them) are the only external input still required.
+
 This is a scoped model of zero-field NMR (the kind detected with an atomic
 magnetometer, as in the Budker/Pines/Blanchard work): at zero field there is no
 Zeeman term, the coupled spins evolve under the scalar **J-coupling alone**, and the
@@ -261,6 +280,95 @@ flip and the equal-γ permutations, and is broken here by capping the prior at
 90°. Before that cap the angle posterior was bimodal at 55° and 125° with a mean
 of 90° — a posterior mean over a symmetric two-peaked distribution, which is a
 number with no meaning.
+
+## Beyond two spins — a coupling that cannot be measured
+
+```bash
+python methanol_demo.py         # 4 spins, 2 coupling classes
+python train_library.py         # trains/caches a network per molecule
+```
+
+[¹³C]-methanol's methyl group is the sharp identifiability case: six pairwise
+couplings, but only **two symmetry-distinct classes**, and only one of them
+measurable. The ΔI_A = 0 selection rule means the proton–proton coupling
+*inside* the equivalent group moves no line at all — sweeping J_HH across its
+whole prior changes the summary vector by < 10⁻¹², i.e. by nothing.
+
+So the problem is parameterized by classes rather than by all N(N−1)/2 pairs,
+and the **shrinkage** (1 − posterior width / prior width) is reported per
+parameter. A posterior over every pair would report the prior back in five
+directions while looking like a result; the shrinkage column is what stops that.
+
+## Resolution cliffs, and a bug they exposed
+
+```bash
+python resolution_cliffs.py     # where the summary jumps, and what it costs
+```
+
+A peak list is a **discontinuous observable**: two lines closer than the
+spectrometer's resolution are reported as one peak, and the peak count is an
+integer that changes. Looking for those jumps turned up one that was not
+physical at all.
+
+The merge threshold in `peak_summary` was the model's *own linewidth*, so it
+moved with the fitted T₂ — making the observation model discontinuous in a
+parameter that has no business being discontinuous. At the reference point the
+multiplet gap is 26.644 mHz and the linewidth at T₂ = 12 s is 26.526 mHz, so a
+**0.1 s change in T₂ merged three lines into one and moved the log-likelihood by
+5 × 10⁵**.
+
+It is also simply wrong. On real data the peak list is read off a measured
+spectrum at a fixed acquisition resolution, long before T₂ is known, so the merge
+rule has to be an instrument constant — and it now is (`InferenceProblem.merge_hz`).
+
+What changed:
+
+* the Hessian is positive definite at the truth; it was not before;
+* nested sampling on the exact likelihood gives **2.24 mHz** on J, exactly the
+  information floor (ratio 0.99);
+* the apparent multi-modality of the local fit was *entirely* this bug — 1.5% of
+  starts had stalled at a Δχ²/2 of 277 619. After the fix, **200 of 200 starts
+  find the same minimum**, agreeing on J to 2 × 10⁻⁷ Hz.
+
+The remaining cliffs are real: none in J or T₂, one in |B| at 0.556 nT where the
+multiplet becomes resolvable, and a band near θ_B = 0 where several lines fade
+below the amplitude floor together.
+
+## Against a least-squares fit — the baseline done properly
+
+```bash
+python local_baseline.py        # three cases
+```
+
+Ref [1] extracts couplings by Nelder-Mead least squares with error bars from the
+curvature at the optimum. Any claim that a network is better has to be made
+against a competent version of that, so the baseline here uses normalized
+coordinates, restarted simplexes with a shrinking step, and a numerical Hessian
+with per-parameter steps auto-scaled to the local curvature. It reproduces the
+analytic information floor σ_J = σ_f/√3 to within a percent.
+
+The comparison has **three different answers**, and reporting only the
+flattering one would be dishonest:
+
+**(a) On a clean problem they agree, and the local fit is not the weak link.**
+On formic acid every one of 200 random starts finds the same minimum, and the
+curvature interval, the reweighted network posterior and nested sampling on the
+exact likelihood all land on the same width. The network wins nothing here on
+accuracy — only on cost per spectrum after training.
+
+**(b) With a flat direction, the fit reports its own input.** On methanol the
+Hessian is singular in J_HH. Inverting it does not fail; it returns σ ≈ 10⁶ Hz
+against a 30 Hz prior and prints it as an error bar. Plotting fitted against
+starting value gives a diagonal for J_HH and a flat line for J_CH: the fit hands
+back the guess it was given. `curvature_report()` is the fix — it scales the
+Hessian by the prior widths first (raw eigenvalues carry their parameters' units
+and cannot be compared) so each eigenvalue is (prior width / posterior width)²,
+making 1 the meaningful threshold.
+
+**(c) With two modes, the fit sees one.** θ_B and 180° − θ_B give log-likelihoods
+identical to twelve decimals. Started at 70° the fit returns 54.4 ± 2.0°; started
+at 110° it returns 125.6 ± 2.0°. Each interval is tight, honest, and excludes the
+other. The network holds both.
 
 ## Correctness test
 

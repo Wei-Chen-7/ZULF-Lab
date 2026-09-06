@@ -1,49 +1,0 @@
-========================================================================================
-CASE A -- [13C]-formic acid: one coupling, four parameters
-========================================================================================
-  truth: J_CH=222.9000, B_nT=1.0000, B_theta_deg=55.0000, T2_s=12.0000
-
-----------------------------------------------------------------------------------------
-1. ACCURACY -- one fit started at the prior centre (the best case)
-----------------------------------------------------------------------------------------
-   parameter       true      start          fit   curvature sigma  error/sigma
-        J_CH   222.9000   222.2000    222.90007          0.000577         0.12
-        B_nT     1.0000     1.0000      0.98686          0.021670        -0.61
- B_theta_deg    55.0000    45.0000     54.44308          1.032240        -0.54
-        T2_s    12.0000    21.5000     12.59774          0.869941         0.69
-
-  J error +0.070 mHz | 3055 evaluations in 0.73 s
-
-----------------------------------------------------------------------------------------
-2. STARTING-GUESS DEPENDENCE -- 200 starts drawn from the prior
-----------------------------------------------------------------------------------------
-    25/200
-    50/200
-    75/200
-    100/200
-    125/200
-    150/200
-    175/200
-    200/200
-
-  reached the global minimum : 100.0% of starts
-  J when it did              : 222.90007 Hz (spread 2.02e-07 Hz)
-  median time per fit        : 1.48 s
-
-----------------------------------------------------------------------------------------
-3. MULTI-MODAL BEHAVIOUR
-----------------------------------------------------------------------------------------
-  distinct minima in J: 1
-      J (Hz)   starts     frac   delta chi2/2
-   222.90007      200   100.0%          0.000
-
-  One basin. On this problem the local fit is not the weak link:
-  it finds the same answer from anywhere in the prior. Any claim
-  that the network wins here would have to be about cost, not
-  correctness -- see case B for where correctness starts to bite.
-
-----------------------------------------------------------------------------------------
-4. AGREEMENT WITH THE EXACT POSTERIOR (nested sampling, same data)
-----------------------------------------------------------------------------------------
-  training/loading the network ...
- Training neural network. Epochs trained: 1 Training neural network. Epochs trained: 2 Training neural network. Epochs trained: 3 Training neural network. Epochs trained: 4 Training neural network. Epochs trained: 5 Training neural network. Epochs trained: 6 Training neural network. Epochs trained: 7 Training neural network. Epochs trained: 8 Training neural network. Epochs trained: 9 Training neural network. Epochs trained: 10 Training neural network. Epochs trained: 11
