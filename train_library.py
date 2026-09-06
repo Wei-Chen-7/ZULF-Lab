@@ -81,8 +81,11 @@ def main():  # pragma: no cover - study
         trained = not meta.get("cached", False)
         print(f"  {prob.sys.n} spins, {len(prob.param_names)} parameters, "
               f"summary length {prob.x_dim()}, {spec['n_sims']:,} simulations")
-        print(f"  {'trained in' if trained else 'loaded from cache in'} "
-              f"{meta.get('train_seconds', t_build):.1f} s")
+        if trained:
+            print(f"  trained in {meta['train_seconds']:.1f} s")
+        else:
+            print(f"  loaded from cache in {t_build:.2f} s "
+                  f"(originally trained in {meta['train_seconds']:.1f} s)")
         print(f"\n{'parameter':>13} {'true':>10} {'mean':>11} {'95% width':>12} "
               f"{'shrinkage':>10}  reading")
         for r in rows:
