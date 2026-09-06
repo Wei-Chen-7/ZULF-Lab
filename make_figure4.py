@@ -16,7 +16,8 @@ would be dishonest:
     equally well and the simplex drifts along the flat direction until the
     prior box stops it. Plotting fitted against starting value gives a flat
     line for J_CH and, for J_HH, a cloud filling the prior -- spread wider than
-    the prior itself, correlated with the start at only +0.20. It is not the
+    the prior itself, and correlated with the start only weakly and
+    irreproducibly (+0.20 and +0.42 on two noise realizations). It is not the
     guess handed back; it is noise, reported with an error bar.
 
 (c) **The local fit cannot see the second mode.** theta_B and 180 - theta_B give

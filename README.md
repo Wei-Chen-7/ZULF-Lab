@@ -360,13 +360,18 @@ accuracy — only on cost per spectrum after training.
 the Hessian is singular in J_HH. Inverting it does not fail; it returns a 95%
 interval of **2 375 214 Hz against a 30 Hz prior** and prints it as an error bar.
 
-The fitted *value* is no better. Over 60 starts J_HH fills its prior (−14.96 to
-14.98 Hz) with a spread of 10.6 Hz — wider than the prior's own 8.7 Hz, because
-the simplex drifts along the flat direction until the box stops it. It is not
-even the guess handed back: the mean drift from the starting value is 9.3 Hz,
-a third of the prior, and the correlation with the start is only **+0.20**. The
-number is noise, and it comes with an error bar. From the same 60 fits J_CH
-lands within 6 × 10⁻⁵ Hz of the truth every time.
+The fitted *value* is no better. Over 60 starts J_HH fills its whole prior with
+a spread of ~11 Hz — wider than the prior's own 8.7 Hz, because the simplex
+drifts along the flat direction until the box stops it. It is not even the guess
+handed back: the mean drift from the starting value is ~9 Hz, and the
+correlation with the start is weak and *not reproducible* — +0.20 and +0.42 on
+two different noise realizations of the same observation. The number is noise,
+and it comes with an error bar.
+
+The contrast is in the spread, not the drift: every parameter drifts ~30% of its
+prior, because a random start is on average that far from the answer. But J_CH's
+*fitted* spread is 6 × 10⁻⁸ Hz across all 60 starts and it lands within
+6 × 10⁻⁵ Hz of the truth every time, while J_HH's is 11 Hz.
 
 `curvature_report()` is the diagnostic — it scales the Hessian by the prior
 widths first (raw eigenvalues carry their parameters' units and cannot be
