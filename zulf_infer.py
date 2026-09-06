@@ -484,13 +484,15 @@ def train_or_load(prob, tag, n_sims=150_000, seed=0, force=False,
     if not force and os.path.exists(path):
         posterior, meta = load_posterior(tag, model_dir)
         if all(meta.get(k) == v for k, v in want.items()):
-            return posterior, meta
+            # ``train_seconds`` is stored, so it survives into a cache hit and
+            # cannot say whether this call trained anything. ``cached`` can.
+            return posterior, dict(meta, cached=True)
     t0 = time.perf_counter()
     posterior, _, _ = train_npe(prob, n_sims=n_sims, seed=seed,
                                 verbose=verbose, **train_kw)
     want["train_seconds"] = time.perf_counter() - t0
     save_posterior(posterior, tag, meta=want, model_dir=model_dir)
-    return posterior, want
+    return posterior, dict(want, cached=False)
 
 
 def evaluate(prob, posterior, theta_true, n_post=20000, seed=0, label=""):

@@ -294,9 +294,10 @@ def test_train_or_load_writes_then_reuses(tmp_path):
     _, meta = _tiny(prob, "t", tmp_path)
     assert (tmp_path / "t.pt").exists()
     assert meta["train_seconds"] > 0
+    assert meta["cached"] is False
     _, meta2 = _tiny(prob, "t", tmp_path)
-    assert "train_seconds" not in meta2 or meta2["train_seconds"] == \
-        meta["train_seconds"]                      # loaded, not retrained
+    assert meta2["cached"] is True                 # loaded, not retrained
+    assert meta2["train_seconds"] == meta["train_seconds"]
 
 
 def test_loaded_posterior_samples_the_same_shape(tmp_path):
@@ -315,7 +316,7 @@ def test_a_stale_signature_forces_a_retrain(tmp_path):
     _tiny(a, "sig", tmp_path)
     b = zi.InferenceProblem(seed=0, merge_hz=0.05)   # different summary
     _, meta = _tiny(b, "sig", tmp_path)
-    assert "train_seconds" in meta                  # retrained, not reused
+    assert meta["cached"] is False                  # retrained, not reused
     assert meta["signature"] == repr(sorted(b.summary_signature().items()))
 
 
@@ -323,6 +324,7 @@ def test_force_retrains_even_on_a_hit(tmp_path):
     prob = zi.InferenceProblem(seed=0)
     _, m1 = _tiny(prob, "f", tmp_path)
     _, m2 = _tiny(prob, "f", tmp_path, force=True)
+    assert m1["cached"] is False and m2["cached"] is False
     assert m2["train_seconds"] > 0 and m2 is not m1
 
 

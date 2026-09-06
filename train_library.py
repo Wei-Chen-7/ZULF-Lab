@@ -78,7 +78,7 @@ def main():  # pragma: no cover - study
     for name, spec in LIBRARY.items():
         print(f"\n{'=' * 84}\n{name}\n{'=' * 84}", flush=True)
         prob, meta, m, rows, t_build, t_obs = build(name, spec, force=force)
-        trained = "train_seconds" in meta
+        trained = not meta.get("cached", False)
         print(f"  {prob.sys.n} spins, {len(prob.param_names)} parameters, "
               f"summary length {prob.x_dim()}, {spec['n_sims']:,} simulations")
         print(f"  {'trained in' if trained else 'loaded from cache in'} "
