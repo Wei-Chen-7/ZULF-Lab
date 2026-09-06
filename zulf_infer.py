@@ -82,7 +82,7 @@ def merge_lines(freqs, amps, width_hz):
 
 
 def peak_summary(freqs, amps, width_hz, J_center, n_low=1, n_high=3,
-                 split_hz=None):
+                 split_hz=None, merge_hz=None):
     """Fixed-length summary vector from a line list.
 
     Layout (``n_low=1``, ``n_high=3`` gives length 9)::
@@ -94,10 +94,15 @@ def peak_summary(freqs, amps, width_hz, J_center, n_low=1, n_high=3,
     The high-frequency positions are offsets from the prior centre, so the
     network sees numbers of order 0.1 Hz rather than 200 Hz. Groups are sorted
     by frequency and padded with an amplitude floor.
+
+    ``merge_hz`` is the resolution at which lines are merged, and defaults to
+    ``width_hz`` only for backwards compatibility. It should be set to an
+    instrument constant instead -- see :class:`InferenceProblem`.
     """
     if split_hz is None:
         split_hz = 0.5 * J_center
-    f, a = merge_lines(np.asarray(freqs), np.asarray(amps), width_hz)
+    f, a = merge_lines(np.asarray(freqs), np.asarray(amps),
+                       width_hz if merge_hz is None else merge_hz)
     mag = np.abs(a)
 
     def _group(mask, n, offset):
@@ -168,12 +173,26 @@ class InferenceProblem:
         corresponds to roughly SNR 24 at T2 = 10 s -- a conservative choice.
     sigma_logamp : float
         Standard deviation of the log10 amplitude error.
+    merge_hz : float, optional
+        Resolution at which two lines are merged into one, in Hz. This is an
+        **instrument** constant and must not depend on the parameters: on real
+        data the peak list is read off a measured spectrum at a fixed
+        acquisition resolution, long before T2 is known.
+
+        Using the model's own linewidth here instead -- which is what the first
+        version did -- makes the observation model discontinuous in T2. The
+        multiplet gap for formic acid at 1 nT is 26.644 mHz and the linewidth
+        at T2 = 12 s is 26.526 mHz, so a 0.1 s change in T2 merged three
+        multiplet lines into one and moved the log-likelihood by 5e5. A simplex
+        cannot cross that, and the importance weights near it are worthless.
+
+        Defaults to the linewidth at the centre of the T2 prior.
     """
 
     def __init__(self, system="formic_acid", classes=None, J_center=None,
                  J_half=None, B_max_nT=2.0, T2_range=(3.0, 40.0),
                  sigma_f=1e-3, sigma_logamp=0.03, seed=0, theta_max_deg=90.0,
-                 summary_shape=None):
+                 summary_shape=None, merge_hz=None):
         self.system = system
         self.sys = zf.build_system(system)
         self.classes = list(classes if classes is not None
@@ -205,7 +224,28 @@ class InferenceProblem:
         self.n_couplings = len(self.classes)
         self.sigma_f = float(sigma_f)
         self.sigma_logamp = float(sigma_logamp)
+        self.T2_range = (float(T2_range[0]), float(T2_range[1]))
+        self.merge_hz = float(merge_hz) if merge_hz is not None else \
+            1.0 / (np.pi * float(np.mean(T2_range)))
         self.rng = np.random.default_rng(seed)
+
+    def summary_signature(self):
+        """Everything that defines the observation model, for cache keys.
+
+        Two problems with the same signature produce the same summary vector
+        from the same parameters, so a network trained on one is valid for the
+        other -- and a network trained on a different one is not, however
+        similar its parameter names look.
+        """
+        return dict(system=self.system,
+                    classes=[(n, sorted(map(tuple, p)), c, h)
+                             for n, p, c, h in self.classes],
+                    shape=(self.n_low, self.n_high),
+                    J_center=self.J_center,
+                    merge_hz=round(self.merge_hz, 12),
+                    sigma_f=self.sigma_f, sigma_logamp=self.sigma_logamp,
+                    low=list(np.round(self.low, 12)),
+                    high=list(np.round(self.high, 12)))
 
     def J_matrix(self, theta):
         """Build the full J matrix from the coupling-class values in theta."""
@@ -256,7 +296,8 @@ class InferenceProblem:
         f, a = zf.line_list(self.sys, B=B, J=Jm)
         width = 1.0 / (np.pi * T2)                     # absorption FWHM
         x = peak_summary(f, a, width, self.J_center,
-                         n_low=self.n_low, n_high=self.n_high)
+                         n_low=self.n_low, n_high=self.n_high,
+                         merge_hz=self.merge_hz)
         if noisy:
             x = x + self.rng.normal(0.0, self.slot_sigmas())
         return x
@@ -383,6 +424,73 @@ def train_npe(prob, n_sims=50000, seed=0, density_estimator="nsf",
                                  torch.as_tensor(x, dtype=torch.float32))
     inference.train(show_train_summary=verbose, **train_kw)
     return inference.build_posterior(), theta, x
+
+
+#: Where trained networks are cached. Amortization is the whole point of a
+#: single-round NPE -- the training cost is paid once and every later spectrum
+#: costs one forward pass -- but that only pays off if the network outlives the
+#: process that trained it.
+MODEL_DIR = "models"
+
+
+def save_posterior(posterior, tag, meta=None, model_dir=MODEL_DIR):
+    """Pickle a trained posterior, with enough metadata to know what it is."""
+    import os
+    import torch
+    import sbi
+    os.makedirs(model_dir, exist_ok=True)
+    path = os.path.join(model_dir, f"{tag}.pt")
+    payload = dict(posterior=posterior,
+                   meta=dict(meta or {},
+                             sbi_version=sbi.__version__,
+                             torch_version=torch.__version__))
+    torch.save(payload, path)
+    return path
+
+
+def load_posterior(tag, model_dir=MODEL_DIR):
+    """Load a cached posterior. Returns ``(posterior, meta)``.
+
+    Warns rather than fails on a library-version mismatch: the pickle usually
+    still loads, and a loud warning is more useful than a hard stop.
+    """
+    import os
+    import warnings
+    import torch
+    import sbi
+    path = os.path.join(model_dir, f"{tag}.pt")
+    payload = torch.load(path, weights_only=False)
+    meta = payload.get("meta", {})
+    if meta.get("sbi_version") not in (None, sbi.__version__):
+        warnings.warn(f"{path} was written by sbi {meta['sbi_version']}, "
+                      f"running {sbi.__version__}")
+    return payload["posterior"], meta
+
+
+def train_or_load(prob, tag, n_sims=150_000, seed=0, force=False,
+                  model_dir=MODEL_DIR, verbose=False, **train_kw):
+    """Train a network, or reuse the cached one if it matches this problem.
+
+    The cache is keyed on ``tag`` but validated against the problem's system,
+    parameter names and summary length, so a stale network from a different
+    parameterization is retrained rather than silently reused.
+    """
+    import os
+    import time
+    want = dict(system=prob.system, param_names=list(prob.param_names),
+                x_dim=prob.x_dim(), n_sims=int(n_sims), seed=int(seed),
+                signature=repr(sorted(prob.summary_signature().items())))
+    path = os.path.join(model_dir, f"{tag}.pt")
+    if not force and os.path.exists(path):
+        posterior, meta = load_posterior(tag, model_dir)
+        if all(meta.get(k) == v for k, v in want.items()):
+            return posterior, meta
+    t0 = time.perf_counter()
+    posterior, _, _ = train_npe(prob, n_sims=n_sims, seed=seed,
+                                verbose=verbose, **train_kw)
+    want["train_seconds"] = time.perf_counter() - t0
+    save_posterior(posterior, tag, meta=want, model_dir=model_dir)
+    return posterior, want
 
 
 def evaluate(prob, posterior, theta_true, n_post=20000, seed=0, label=""):
