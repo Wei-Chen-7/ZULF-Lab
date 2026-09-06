@@ -200,21 +200,32 @@ likelihood is available in closed form, so NPE samples can be reweighted into an
 exact posterior — the case for SBI here is global search and multimodality, not
 intractability.
 
-### First result (simulated data, [¹³C]-formic acid, 50k simulations)
+### The trained-network library
 
-| | J, 95% width | shrinkage |
-|---|---|---|
-| prior | 6000 mHz | — |
-| raw NPE | 11.4 mHz | 528× |
-| **after importance reweighting** | **2.18 mHz** | **2750×** |
-| information floor (3 lines at σ_f = 1 mHz) | 2.26 mHz | — |
+```bash
+python train_library.py         # trains what is missing, reports all
+```
 
-Reweighting reaches the information floor, and the nuisances are recovered
-(B_θ = 54.97° against a true 55°). **Sample efficiency is 1.7%**, above the 1%
-floor but not by much — the raw NPE proposal is ~5× wider than the true
-posterior, so most samples land in the wings. This is the perfectly-specified
-simulated case; real data will only lower it, so a tighter proposal is worth
-having before then.
+Four molecules, each network cached in `models/` with a `manifest.json` saying
+what it measures and what it cannot:
+
+| molecule | spins | measured | 95% width | floor | flat | efficiency |
+|---|---|---|---|---|---|---|
+| formic acid | 2 | J_CH | 2.24 mHz | 2.263 | — | 24.3% |
+| formaldehyde | 3 | J_CH | 1.30 mHz | 1.307 | J_HH | 7.5% |
+| glycine | 3 | J_CH | 1.30 mHz | 1.307 | J_HH | 7.0% |
+| methanol | 4 | J_CH | 1.01 mHz | 1.012 | J_HH | 10.1% |
+
+**Every network saturates its own information floor**, and so do the nuisances —
+formic acid's |B| floor is 84.9 mHz against a measured 85.1, its θ_B floor 4.14°
+against 4.01°.
+
+Precision *improves* with spin count, which is not an accident and not noise.
+The floor is not σ_f/√n: XA₂ puts its line at 3/2 J and XA₃ at J and 2J, so the
+lines move **faster** than J and a given σ_f buys a tighter J. `information_floor()`
+computes it from the Fisher information of the simulator, so it is right for any
+molecule; a flat direction has no floor and comes back as `inf` rather than as a
+large number.
 
 > These numbers are conditional on σ_f, the peak-position measurement error,
 > which here stands in for the whole acquisition and SNR chain rather than being
@@ -246,30 +257,59 @@ wide as the prior. Precision comes from the exact likelihood; the proposal only
 sets efficiency.
 
 **SBC says the network is conservative, not overconfident.** On J the ranks are
-depleted at the edges (outer 20% holds 0.040 of the mass against 0.20 expected,
-−6.9σ) and mildly heavy in the centre — the signature of a posterior that is too
-*wide*. B_θ and T2 are calibrated. Too-wide is the safe direction, and it is
+depleted at the edges (outer 20% holds 0.043 of the mass against 0.20 expected)
+and heavy in the centre — the signature of a posterior that is too *wide*. |B|,
+θ_B and T2 come back calibrated. Too-wide is the safe direction, and it is
 precisely why importance reweighting has good coverage.
 
 ![SBC ranks](sbc_ranks.png)
 
-**Efficiency varies 40× between observations** — 1.38% to 55.67% over 40 draws
-from the prior, median 23.4%, none below 1%. This matters for the project's
+**Efficiency varies ~30× between observations** — 1.6% to 45.3% over 40 draws
+from the prior, median 26.7%, none below 1%. This matters for the project's
 failure criterion, which is stated as a single number: the same network on the
-same model can read 1.4% on one spectrum and 55% on another. Quoting it over
-several spectra, or with its spread, would be more robust than a single reading.
+same model reads 1.6% on one spectrum and 45% on another. Quoting it over several
+spectra, or with its spread, would be more robust than a single reading.
+
+*What drives the spread is not settled.* The obvious candidate — proximity to a
+resolution cliff, where the peak count changes and the network's smooth density
+is approximating something that is not smooth — is **refuted**: Spearman
+ρ = −0.06 (p = 0.64) over 60 observations. `resolution_cliffs.py` regresses
+efficiency against every parameter and against distance to the prior boundary
+as well, so the driver is looked for rather than assumed.
 
 **Against nested sampling on the exact likelihood**, on the same observation:
 
 | | J 95% width |
 |---|---|
-| nested sampling (reference) | 2.28 mHz |
+| nested sampling (reference) | 2.24 mHz |
 | reweighted NPE | 2.27 mHz |
-| agreement | **0.4%** |
+| local fit (curvature) | 2.26 mHz |
+| information floor | 2.26 mHz |
+| agreement, NPE vs nested | **1.5%** |
 
 Earlier, at 1.7% efficiency, the same comparison agreed only to 4%. At ESS ≈ 340
 the reweighted quantiles carry ~5% Monte Carlo error, so **low efficiency
 degrades the accuracy of the reweighted estimate, not just its speed.**
+
+### Figure 2 — the posterior and its spread
+
+```bash
+python make_figure2.py          # writes figure2_posterior.png
+```
+
+![figure 2](figure2_posterior.png)
+
+Prior 5700 mHz → raw network proposal 5.40 → reweighted 2.289 → floor 2.263.
+The reweighted posterior sits at **1.01× the information floor**, and the four
+parameters come back essentially uncorrelated (|r| ≤ 0.02).
+
+### Figure 4 — against exact sampling and against ref [1]
+
+```bash
+python make_figure4.py          # writes figure4_comparison.png
+```
+
+![figure 4](figure4_comparison.png)
 
 ### A third exact degeneracy
 

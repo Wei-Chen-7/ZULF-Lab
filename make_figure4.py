@@ -160,10 +160,11 @@ def panel_b(ax, seed=SEED, n_starts=60):
     ax.plot(norm(starts[:, ich], ich), norm(arr[:, ich], ich), "s", ms=4.5,
             color=C_NPE, alpha=0.85,
             label=f"$J_{{\\rm CH}}$ (measured) r = {r_ch:+.2f}")
-    ax.annotate("true $J_{\\rm HH}$", xy=(0.99, norm(theta_true[ihh], ihh)),
-                ha="right", va="bottom", fontsize=7.2, color=C_LOCAL)
-    ax.annotate("true $J_{\\rm CH}$", xy=(0.99, norm(theta_true[ich], ich)),
-                ha="right", va="bottom", fontsize=7.2, color=C_NPE)
+    # On the left: the legend sits bottom-right and would hide them there.
+    ax.annotate("true $J_{\\rm HH}$", xy=(0.012, norm(theta_true[ihh], ihh)),
+                ha="left", va="bottom", fontsize=7.2, color=C_LOCAL)
+    ax.annotate("true $J_{\\rm CH}$", xy=(0.012, norm(theta_true[ich], ich)),
+                ha="left", va="bottom", fontsize=7.2, color=C_NPE)
 
     drift = np.mean(np.abs(arr[:, ihh] - starts[:, ihh]))
     ax.set_xlim(-0.03, 1.03)
@@ -204,7 +205,7 @@ def panel_c(ax, seed=SEED):
     dn = _density(s[:, 2], w, grid)
     ax.fill_between(grid, dn / dn.max(), color=C_NPE, alpha=0.20)
     ax.plot(grid, dn / dn.max(), color=C_NPE, lw=2.0,
-            label="NPE posterior, reweighted")
+            label="NPE, reweighted")
 
     for k, start_ang in enumerate((70.0, 110.0)):
         t0 = theta_true.copy()
@@ -213,28 +214,28 @@ def panel_c(ax, seed=SEED):
         sg, _, _, _ = lb.curvature_errors(prob, x_obs, f["theta"])
         g = np.exp(-0.5 * ((grid - f["theta"][2]) / sg[2]) ** 2)
         ax.plot(grid, g, color=C_LOCAL, lw=1.8, ls="--",
-                label="local fit (started at 70 and 110 deg)" if k == 0 else None)
+                label="local fit" if k == 0 else None)
         ax.annotate(f"{f['theta'][2]:.1f} $\\pm$ {1.96 * sg[2]:.1f}$^\\circ$",
-                    xy=(f["theta"][2], 1.02), ha="center", fontsize=7.6,
+                    xy=(f["theta"][2], 1.05), ha="center", fontsize=7.6,
                     color=C_LOCAL)
-    ax.axvline(theta_true[2], color="#22333b", lw=1.0, ls=":")
-    ax.annotate("truth", xy=(theta_true[2], 0.5), xytext=(-30, 0),
-                textcoords="offset points", fontsize=7.6, color="#22333b")
+    ax.axvline(theta_true[2], color="#22333b", lw=1.0, ls=":", label="truth")
 
     mass = w[s[:, 2] < 90].sum() / w.sum()
-    ax.text(0.02, 0.62, f"posterior mass\n  below 90$^\\circ$: {mass:.0%}\n"
+    ax.text(0.02, 0.42, f"posterior mass\n  below 90$^\\circ$: {mass:.0%}\n"
                         f"  above 90$^\\circ$: {1 - mass:.0%}\n"
                         f"(exactly degenerate,\n so 50/50 is correct)",
             transform=ax.transAxes, va="top", fontsize=7.6,
             bbox=dict(fc="white", ec="#adb5bd", alpha=0.9, pad=4))
-    ax.set_ylim(0, 1.12)
+    ax.set_ylim(0, 1.45)
     ax.set_xlim(0, 180)
     ax.set_xticks([0, 45, 90, 135, 180])
     ax.set_xlabel(r"field angle $\theta_B$  [deg]", fontsize=9)
     ax.set_title(r"(c) $\theta_B \leftrightarrow 180^\circ-\theta_B$:"
                  "\nthe local fit sees one mode of two", fontsize=9.5,
                  fontweight="bold")
-    ax.legend(fontsize=7.5, loc="upper right", framealpha=0.9)
+    # The taller y-range leaves a clear band at the top for the legend, above
+    # both the peaks and the per-mode labels that sit just over them.
+    ax.legend(fontsize=7.5, loc="upper left", framealpha=0.9)
     ax.tick_params(labelsize=8)
     return dict(mass_below=float(mass))
 
