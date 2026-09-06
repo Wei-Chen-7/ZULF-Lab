@@ -1,8 +1,23 @@
 # ZULF Lab
 
-An interactive **zero- to ultralow-field NMR spin simulator**, built from scratch
-with NumPy/SciPy/Matplotlib (no qutip, no spin-dynamics libraries — the operators
-and propagation are written by hand so the physics is explicit).
+An interactive **zero- to ultralow-field NMR spin simulator**, and the forward
+model plus simulation-based-inference stack built on top of it.
+
+## Install and run
+
+```bash
+pip install -r requirements.txt
+pytest -q                    # 79 tests, all physics claims are encoded here
+
+python zulf_nmr.py           # interactive teaching simulator
+python zulf_forward.py       # forward-model smoke demo
+python make_figure1.py       # model over a published spectrum
+python nested_reference.py   # exact-likelihood reference posterior
+```
+
+Everything is built from scratch with NumPy/SciPy/Matplotlib (no qutip, no
+spin-dynamics libraries — the operators and propagation are written by hand so
+the physics is explicit).
 
 This is a scoped model of zero-field NMR (the kind detected with an atomic
 magnetometer, as in the Budker/Pines/Blanchard work): at zero field there is no
@@ -10,12 +25,7 @@ Zeeman term, the coupled spins evolve under the scalar **J-coupling alone**, and
 detected magnetization oscillates at the J-coupling frequency. Drag a slider and
 watch the spectrum reshape.
 
-## Run
-
-```bash
-pip install numpy scipy matplotlib
-python zulf_nmr.py
-```
+## `zulf_nmr.py` — the interactive simulator
 
 An interactive window opens with live sliders for **J**, **leading field B_z**, and
 **T2**, a **spin-system selector**, a **relaxation-model toggle**, and a **Play**
