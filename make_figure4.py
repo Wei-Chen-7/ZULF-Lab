@@ -100,7 +100,7 @@ def panel_a(ax, seed=SEED):
     wn = w95(ref["samples"][:, 0], ref["weights"])
     wp = w95(m["samples"][:, 0], m["weights"])
     wl = 2 * 1.96 * sigma[0] * 1e3
-    floor = 2 * 1.96 * prob.sigma_f / np.sqrt(3) * 1e3
+    floor = zi.information_floor(prob, theta_true)[0] * 1e3
     ax.text(0.02, 0.97,
             f"95% width on $J_{{\\rm CH}}$\n"
             f"  nested      {wn:5.2f} mHz\n"

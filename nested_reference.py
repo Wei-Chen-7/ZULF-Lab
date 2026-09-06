@@ -83,7 +83,7 @@ def main():  # pragma: no cover - study
 
     jlo, jhi = zi.weighted_quantile(samples[:, 0], [0.025, 0.975], w)
     width = (jhi - jlo) * 1e3
-    floor = 2 * 1.96 * prob.sigma_f / np.sqrt(3) * 1e3
+    floor = zi.information_floor(prob, theta_true)[0] * 1e3
     print(f"\n  nested sampling 95% width on J : {width:8.2f} mHz")
     print(f"  information floor              : {floor:8.2f} mHz")
     print(f"  ratio                          : {width / floor:8.2f}")

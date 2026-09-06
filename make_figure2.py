@@ -111,7 +111,7 @@ def corner(prob, samples, weights, theta_true, raw=None, path=OUT):
     prior_w = 0.95 * span[0] * 1e3
     lo, hi = _wq(samples[:, 0], [0.025, 0.975], weights)
     post_w = (hi - lo) * 1e3
-    floor = 2 * 1.96 * prob.sigma_f / np.sqrt(3) * 1e3
+    floor = zi.information_floor(prob, theta_true)[0] * 1e3
     bars = [("prior", prior_w, "#adb5bd")]
     if raw is not None:
         rlo, rhi = np.percentile(raw[:, 0], [2.5, 97.5])

@@ -1,0 +1,121 @@
+{
+  "formaldehyde": {
+    "efficiency": 0.07467029209998464,
+    "flat": [
+      "J_HH"
+    ],
+    "measured": [
+      "J_CH"
+    ],
+    "merge_hz": 0.01480511098529259,
+    "n_sims": 60000,
+    "n_spins": 3,
+    "params": [
+      "J_CH",
+      "J_HH",
+      "B_nT",
+      "B_theta_deg",
+      "T2_s"
+    ],
+    "seconds_per_spectrum": 5.459969615999398,
+    "shrinkage": {
+      "J_CH": 0.9997724566543311,
+      "J_HH": 0.01285348160639177
+    },
+    "sigma_f": 0.001,
+    "tag": "formaldehyde_60k",
+    "widths_mHz": {
+      "J_CH": 1.2969970703125,
+      "J_HH": 28133.675774217834
+    },
+    "x_dim": 11
+  },
+  "formic_acid": {
+    "efficiency": 0.24293623795097657,
+    "flat": [],
+    "measured": [
+      "J_CH"
+    ],
+    "merge_hz": 0.01480511098529259,
+    "n_sims": 150000,
+    "n_spins": 2,
+    "params": [
+      "J_CH",
+      "B_nT",
+      "B_theta_deg",
+      "T2_s"
+    ],
+    "seconds_per_spectrum": 4.694197902000269,
+    "shrinkage": {
+      "J_CH": 0.9996064838610197
+    },
+    "sigma_f": 0.001,
+    "tag": "formic_acid_150k",
+    "widths_mHz": {
+      "J_CH": 2.2430419921875
+    },
+    "x_dim": 9
+  },
+  "glycine": {
+    "efficiency": 0.06996168909814657,
+    "flat": [
+      "J_HH"
+    ],
+    "measured": [
+      "J_CH"
+    ],
+    "merge_hz": 0.01480511098529259,
+    "n_sims": 60000,
+    "n_spins": 3,
+    "params": [
+      "J_CH",
+      "J_HH",
+      "B_nT",
+      "B_theta_deg",
+      "T2_s"
+    ],
+    "seconds_per_spectrum": 5.312907950000408,
+    "shrinkage": {
+      "J_CH": 0.9997724566543311,
+      "J_HH": 0.003583934338672101
+    },
+    "sigma_f": 0.001,
+    "tag": "glycine_60k",
+    "widths_mHz": {
+      "J_CH": 1.2969970703125,
+      "J_HH": 28397.857871347846
+    },
+    "x_dim": 11
+  },
+  "methanol": {
+    "efficiency": 0.10055799004743719,
+    "flat": [
+      "J_HH"
+    ],
+    "measured": [
+      "J_CH"
+    ],
+    "merge_hz": 0.01480511098529259,
+    "n_sims": 60000,
+    "n_spins": 4,
+    "params": [
+      "J_CH",
+      "J_HH",
+      "B_nT",
+      "B_theta_deg",
+      "T2_s"
+    ],
+    "seconds_per_spectrum": 7.58330327800013,
+    "shrinkage": {
+      "J_CH": 0.9998233192845395,
+      "J_HH": 0.0031719822417219934
+    },
+    "sigma_f": 0.001,
+    "tag": "methanol_60k",
+    "widths_mHz": {
+      "J_CH": 1.007080078125,
+      "J_HH": 28409.598506110924
+    },
+    "x_dim": 17
+  }
+}

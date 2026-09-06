@@ -513,10 +513,71 @@ def evaluate(prob, posterior, theta_true, n_post=20000, seed=0, label=""):
     rlo, rhi = weighted_quantile(s[:, 0], [0.025, 0.975], w)
     rew = (rhi - rlo) * 1e3
     prior_mHz = (prob.high[0] - prob.low[0]) * 1e3
-    floor = 2 * 1.96 * prob.sigma_f / np.sqrt(3) * 1e3
+    floor = information_floor(prob, theta_true)[0] * 1e3
     return dict(label=label, raw_mHz=raw, reweighted_mHz=rew,
                 efficiency=eff, floor_mHz=floor, prior_mHz=prior_mHz,
                 raw_over_floor=raw / floor, samples=s, weights=w, x_obs=x_obs)
+
+
+def fisher_matrix(prob, theta, rel_step=1e-4):
+    """Fisher information at theta, from the noiseless simulator.
+
+    The noise is additive Gaussian with known per-slot scales, so
+    ``F = G^T diag(1/sigma^2) G`` with ``G`` the Jacobian of the summary. One
+    central difference per parameter.
+    """
+    theta = np.asarray(theta, float)
+    sig = prob.slot_sigmas()
+    span = prob.prior_span()
+    d = len(theta)
+    G = np.empty((len(sig), d))
+    for i in range(d):
+        h = rel_step * span[i]
+        e = np.zeros(d)
+        e[i] = h
+        G[:, i] = (prob.simulate_one(theta + e, noisy=False)
+                   - prob.simulate_one(theta - e, noisy=False)) / (2 * h)
+    Gs = G / sig[:, None]
+    return Gs.T @ Gs, G
+
+
+def information_floor(prob, theta, marginal=True, tol=1e-12):
+    """Narrowest 95% interval the noise model allows, per parameter, in Hz-like units.
+
+    The floor quoted for the two-spin case was ``2 x 1.96 x sigma_f / sqrt(3)``
+    -- three multiplet lines, each measured to sigma_f, each moving 1:1 with J.
+    Two of those three assumptions fail as soon as the molecule is bigger.
+    XA2 puts its line at 3/2 J and XA3 at J and 2J, so the lines move *faster*
+    than J and the floor is correspondingly lower: 2.26 mHz for formic acid but
+    1.31 for formaldehyde and 1.01 for methanol, which is exactly what the
+    trained networks return.
+
+    Computed from the Fisher information instead, so it is right for any
+    molecule. ``marginal=True`` inverts the full matrix, leaving the nuisance
+    parameters free; ``False`` takes 1/F_ii, i.e. every other parameter known.
+
+    A flat direction has zero information and therefore no floor: those come
+    back as ``inf`` rather than as a large number. Only the parameters that
+    genuinely lie along the null space get ``inf`` -- inverting the eigenvalues
+    to ``inf`` directly would propagate roundoff-level loadings into every
+    parameter and make the whole vector infinite.
+    """
+    F, _ = fisher_matrix(prob, theta)
+    if marginal:
+        w, v = np.linalg.eigh(F)
+        scale = max(abs(w).max(), 1e-300)
+        keep = w > tol * scale
+        # Moore-Penrose: invert the constrained subspace, zero the null one.
+        var = np.einsum("ij,j,ij->i", v, np.where(keep, 1.0 / np.where(keep, w, 1.0), 0.0), v)
+        # A parameter is unbounded only if it actually has support in the null
+        # space; 1e-8 is far above the roundoff loading and far below a real one.
+        null_loading = np.einsum("ij,ij->i", v[:, ~keep], v[:, ~keep]) \
+            if (~keep).any() else np.zeros(len(w))
+        var = np.where(null_loading > 1e-8, np.inf, var)
+    else:
+        diag = np.diag(F)
+        var = np.where(diag > 0, 1.0 / np.where(diag > 0, diag, 1.0), np.inf)
+    return 2 * 1.96 * np.sqrt(var)
 
 
 def shrinkage(prob, samples, weights=None, q=(0.025, 0.975)):

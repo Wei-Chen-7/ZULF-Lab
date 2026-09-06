@@ -31,6 +31,10 @@ SEED = 0
 def main():
     np.set_printoptions(suppress=True)
     prob = zi.InferenceProblem(seed=SEED)
+    try:
+        ref = np.load("nested_reference.npz")
+    except FileNotFoundError:
+        ref = None
 
     print(f"training/loading NPE on {N_SIMS} simulations (the sweep winner) ...",
           flush=True)
@@ -60,7 +64,10 @@ def main():
     # ---- 2. efficiency spread -------------------------------------------
     print("\nmeasuring efficiency across observations ...", flush=True)
     effs, widths, _ = zi.efficiency_spread(prob, posterior, n_obs=40, seed=SEED)
-    floor = 2 * 1.96 * prob.sigma_f / np.sqrt(3) * 1e3
+    # The floor depends on where in the prior the observation sits, so quote it
+    # at the reference point the widths below are compared against.
+    anchor = ref["theta_true"] if ref is not None else 0.5 * (prob.low + prob.high)
+    floor = zi.information_floor(prob, anchor)[0] * 1e3
     print("\n" + "=" * 88)
     print("Sampling efficiency across 40 observations drawn from the prior")
     print("=" * 88)
@@ -76,8 +83,9 @@ def main():
           f"{np.mean(widths > 10):.1%}")
 
     # ---- 3. against the nested-sampling reference ------------------------
-    try:
-        ref = np.load("nested_reference.npz")
+    if ref is None:
+        print("\n(no nested_reference.npz; run nested_reference.py first)")
+    else:
         theta_true = ref["theta_true"]
         m = zi.evaluate(prob, posterior, theta_true, seed=SEED, label="tightened")
         rs, rw = ref["samples"], ref["weights"]
@@ -89,8 +97,6 @@ def main():
         print(f"  reweighted NPE  : {m['reweighted_mHz']:6.2f} mHz  "
               f"(efficiency {m['efficiency']:.1%})")
         print(f"  agreement       : {abs(m['reweighted_mHz']-(rhi-rlo)*1e3)/((rhi-rlo)*1e3):.1%}")
-    except FileNotFoundError:
-        print("\n(no nested_reference.npz; run nested_reference.py first)")
 
     np.savez("final_check.npz", ranks=ranks, effs=effs, widths=widths)
     print("\nwrote sbc_ranks.png, sbc_ranks.npy, final_check.npz")

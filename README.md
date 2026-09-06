@@ -7,7 +7,7 @@ model plus simulation-based-inference stack built on top of it.
 
 ```bash
 pip install -r requirements.txt
-pytest -q                    # 131 tests, all physics claims are encoded here
+pytest -q                    # 168 tests, all physics claims are encoded here
 
 python zulf_nmr.py           # interactive teaching simulator
 python zulf_forward.py       # forward-model smoke demo
@@ -34,7 +34,7 @@ the physics is explicit).
 |---|---|
 | Forward model, validated against published spectra | done — 7.2 mHz RMS on ref [1]'s benzene multiplet |
 | Priors, peak-list summaries, amortized NPE | done |
-| Trained networks for a few small molecules | done — `models/`, four molecules |
+| Trained networks for a few small molecules | done — `models/`, four molecules, all at their information floor |
 | Calibration (SBC), efficiency, exact-likelihood reference | done |
 | Comparison against a least-squares fit | done — three cases, all on simulated data |
 | Figure 1 — model over a published spectrum | done |

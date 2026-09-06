@@ -337,3 +337,68 @@ def test_save_and_load_round_trip_carries_metadata(tmp_path):
     _, meta = zi.load_posterior("rt2", model_dir=str(tmp_path))
     assert meta["note"] == "hello"
     assert "sbi_version" in meta and "torch_version" in meta
+
+
+# -- information floor -------------------------------------------------------
+def test_fisher_matrix_is_symmetric_and_psd():
+    prob = zi.InferenceProblem(seed=0)
+    theta = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+    F, G = zi.fisher_matrix(prob, theta)
+    assert F.shape == (4, 4) and G.shape == (prob.x_dim(), 4)
+    assert np.allclose(F, F.T, rtol=1e-8, atol=1e-8 * np.abs(F).max())
+    assert np.all(np.linalg.eigvalsh(F) > -1e-6 * np.abs(F).max())
+
+
+def test_floor_reproduces_the_two_spin_closed_form():
+    """XA: three multiplet lines, each at sigma_f, each moving 1:1 with J."""
+    prob = zi.InferenceProblem(seed=0)
+    theta = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+    want = 2 * 1.96 * prob.sigma_f / np.sqrt(3)
+    assert zi.information_floor(prob, theta)[0] == pytest.approx(want, rel=0.02)
+
+
+@pytest.mark.parametrize("system,theta,want_mHz", [
+    # XA2 puts its line at 3/2 J, so 4 slots each move 1.5x as fast as J.
+    ("formaldehyde", [164.4, 8.0, 1.0, 55.0, 12.0], 2 * 1.96 / (1.5 * 2)),
+    ("glycine", [140.6, -5.0, 1.0, 55.0, 12.0], 2 * 1.96 / (1.5 * 2)),
+    # XA3 puts lines at J and 2J: three slots at rate 1, three at rate 2.
+    ("methanol", [141.7, -12.4, 1.0, 55.0, 12.0], 2 * 1.96 / np.sqrt(3 + 3 * 4)),
+])
+def test_floor_follows_the_multiplet_slope_not_the_line_count(system, theta,
+                                                              want_mHz):
+    """The naive sigma_f/sqrt(n) is wrong whenever lines do not move 1:1 with J.
+
+    This is why precision improves with spin count here: 2.26 mHz on formic
+    acid, 1.31 on formaldehyde, 1.01 on methanol.
+    """
+    prob = zi.InferenceProblem(system=system, seed=0)
+    got = zi.information_floor(prob, theta)[0] * 1e3
+    assert got == pytest.approx(want_mHz, rel=0.02)
+
+
+def test_floor_is_infinite_only_for_the_flat_direction():
+    """A singular Fisher matrix must not poison every other parameter."""
+    prob = zi.InferenceProblem(system="methanol", seed=0)
+    floor = zi.information_floor(prob, [141.7, -12.4, 1.0, 55.0, 12.0])
+    names = list(prob.param_names)
+    assert np.isinf(floor[names.index("J_HH")])
+    finite = [f for n, f in zip(names, floor) if n != "J_HH"]
+    assert np.all(np.isfinite(finite)) and np.all(np.asarray(finite) > 0)
+
+
+def test_marginal_floor_is_never_tighter_than_the_independent_one():
+    """Freeing the nuisances can only widen the achievable interval."""
+    prob = zi.InferenceProblem(seed=0)
+    theta = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+    marg = zi.information_floor(prob, theta, marginal=True)
+    indep = zi.information_floor(prob, theta, marginal=False)
+    assert np.all(marg >= indep - 1e-12)
+
+
+def test_floor_scales_linearly_with_the_noise():
+    prob_a = zi.InferenceProblem(seed=0, sigma_f=1e-3)
+    prob_b = zi.InferenceProblem(seed=0, sigma_f=2e-3)
+    theta = np.array([prob_a.J_center + 0.7, 1.0, 55.0, 12.0])
+    a = zi.information_floor(prob_a, theta)[0]
+    b = zi.information_floor(prob_b, theta)[0]
+    assert b / a == pytest.approx(2.0, rel=0.02)
