@@ -11,11 +11,13 @@ would be dishonest:
     all three methods at once, and it is also the panel that says the network
     wins nothing here on accuracy.
 
-(b) **The local fit reports its own input.** On [13C]-methanol, J_HH inside the
-    equivalent methyl group moves no line, so every value fits equally well.
-    Plotting fitted against starting value gives a diagonal for J_HH and a flat
-    line for J_CH -- the fit returns the guess it was given, with an error bar,
-    and nothing in its output says so.
+(b) **The local fit returns an arbitrary number.** On [13C]-methanol, J_HH
+    inside the equivalent methyl group moves no line, so every value fits
+    equally well and the simplex drifts along the flat direction until the
+    prior box stops it. Plotting fitted against starting value gives a flat
+    line for J_CH and, for J_HH, a cloud filling the prior -- spread wider than
+    the prior itself, correlated with the start at only +0.20. It is not the
+    guess handed back; it is noise, reported with an error bar.
 
 (c) **The local fit cannot see the second mode.** theta_B and 180 - theta_B give
     bit-identical spectra. The network holds both; the local fit returns
@@ -147,32 +149,40 @@ def panel_b(ax, seed=SEED, n_starts=60):
     r_hh = np.corrcoef(starts[:, ihh], arr[:, ihh])[0, 1]
     r_ch = np.corrcoef(starts[:, ich], arr[:, ich])[0, 1]
 
-    ax.plot([0, 1], [0, 1], color="#adb5bd", lw=1.0, ls=":", zorder=0)
+    # The truth, not the identity line, is the reference: the question is
+    # whether the fit lands on the right answer, not whether it stays put.
+    ax.axhline(norm(theta_true[ihh], ihh), color=C_LOCAL, lw=0.9, ls="--")
+    ax.axhline(norm(theta_true[ich], ich), color=C_NPE, lw=0.9, ls="--")
     ax.plot(norm(starts[:, ihh], ihh), norm(arr[:, ihh], ihh), "o", ms=5,
             color=C_LOCAL, alpha=0.85,
-            label=f"$J_{{\\rm HH}}$  (flat)   r = {r_hh:+.3f}")
+            label=f"$J_{{\\rm HH}}$  (flat)   r = {r_hh:+.2f}")
     ax.plot(norm(starts[:, ich], ich), norm(arr[:, ich], ich), "s", ms=4.5,
             color=C_NPE, alpha=0.85,
-            label=f"$J_{{\\rm CH}}$ (measured) r = {r_ch:+.3f}")
-    ax.axhline(norm(theta_true[ich], ich), color=C_NPE, lw=0.9, ls="--")
+            label=f"$J_{{\\rm CH}}$ (measured) r = {r_ch:+.2f}")
+    ax.annotate("true $J_{\\rm HH}$", xy=(0.99, norm(theta_true[ihh], ihh)),
+                ha="right", va="bottom", fontsize=7.2, color=C_LOCAL)
+    ax.annotate("true $J_{\\rm CH}$", xy=(0.99, norm(theta_true[ich], ich)),
+                ha="right", va="bottom", fontsize=7.2, color=C_NPE)
 
+    drift = np.mean(np.abs(arr[:, ihh] - starts[:, ihh]))
     ax.set_xlim(-0.03, 1.03)
     ax.set_ylim(-0.03, 1.03)
     ax.set_xlabel("starting guess  (fraction of prior)", fontsize=9)
     ax.set_ylabel("fitted value  (fraction of prior)", fontsize=9)
-    ax.set_title("(b) The local fit returns its own guess\n"
-                 "for a direction the data cannot see", fontsize=9.5,
+    ax.set_title("(b) For a direction the data cannot see,\n"
+                 "the fit returns an arbitrary number", fontsize=9.5,
                  fontweight="bold")
     ax.legend(fontsize=7.5, loc="lower right", framealpha=0.9)
     ax.text(0.03, 0.95,
             f"$[^{{13}}$C]-methanol, {len(arr)} starts\n"
-            f"$J_{{\\rm HH}}$ prior {span_hh:.0f} Hz wide;\n"
-            f"the fit reports $\\sigma \\sim 10^6$ Hz\n"
-            f"and calls it an error bar",
+            f"$J_{{\\rm HH}}$ fills its {span_hh:.0f} Hz prior;\n"
+            f"mean drift from the start\n"
+            f"  {drift:.1f} Hz ({drift / span_hh:.0%} of the prior)\n"
+            f"reported as $\\sigma \\sim 10^6$ Hz",
             transform=ax.transAxes, va="top", fontsize=7.6,
             bbox=dict(fc="white", ec="#adb5bd", alpha=0.9, pad=4))
     ax.tick_params(labelsize=8)
-    return dict(r_hh=float(r_hh), r_ch=float(r_ch))
+    return dict(r_hh=float(r_hh), r_ch=float(r_ch), drift=float(drift))
 
 
 def panel_c(ax, seed=SEED):
@@ -250,7 +260,7 @@ def main():  # pragma: no cover - figure
     print(f"\n  (a) nested {a['nested']:.2f} / NPE {a['npe']:.2f} / "
           f"local {a['local']:.2f} mHz, floor {a['floor']:.2f}")
     print(f"  (b) corr(start, fit): J_HH {b['r_hh']:+.3f}, "
-          f"J_CH {b['r_ch']:+.3f}")
+          f"J_CH {b['r_ch']:+.3f}; mean J_HH drift {b['drift']:.1f} Hz")
     print(f"  (c) posterior mass below 90 deg: {c['mass_below']:.1%}")
     print(f"\nwrote {OUT}")
 

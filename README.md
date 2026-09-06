@@ -356,14 +356,23 @@ curvature interval, the reweighted network posterior and nested sampling on the
 exact likelihood all land on the same width. The network wins nothing here on
 accuracy — only on cost per spectrum after training.
 
-**(b) With a flat direction, the fit reports its own input.** On methanol the
-Hessian is singular in J_HH. Inverting it does not fail; it returns σ ≈ 10⁶ Hz
-against a 30 Hz prior and prints it as an error bar. Plotting fitted against
-starting value gives a diagonal for J_HH and a flat line for J_CH: the fit hands
-back the guess it was given. `curvature_report()` is the fix — it scales the
-Hessian by the prior widths first (raw eigenvalues carry their parameters' units
-and cannot be compared) so each eigenvalue is (prior width / posterior width)²,
-making 1 the meaningful threshold.
+**(b) With a flat direction, the fit returns an arbitrary number.** On methanol
+the Hessian is singular in J_HH. Inverting it does not fail; it returns a 95%
+interval of **2 375 214 Hz against a 30 Hz prior** and prints it as an error bar.
+
+The fitted *value* is no better. Over 60 starts J_HH fills its prior (−14.96 to
+14.98 Hz) with a spread of 10.6 Hz — wider than the prior's own 8.7 Hz, because
+the simplex drifts along the flat direction until the box stops it. It is not
+even the guess handed back: the mean drift from the starting value is 9.3 Hz,
+a third of the prior, and the correlation with the start is only **+0.20**. The
+number is noise, and it comes with an error bar. From the same 60 fits J_CH
+lands within 6 × 10⁻⁵ Hz of the truth every time.
+
+`curvature_report()` is the diagnostic — it scales the Hessian by the prior
+widths first (raw eigenvalues carry their parameters' units and cannot be
+compared across them) so each eigenvalue is (prior width / posterior width)²,
+making 1 the meaningful threshold. On methanol the scaled spectrum is
+`2.4e-9, 1.9e3, 1.2e4, 2.3e4, 5.4e8` — one flat direction, loading 1.00 on J_HH.
 
 **(c) With two modes, the fit sees one.** θ_B and 180° − θ_B give log-likelihoods
 identical to twelve decimals. Started at 70° the fit returns 54.4 ± 2.0°; started

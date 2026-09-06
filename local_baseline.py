@@ -437,13 +437,31 @@ def case_methanol(seed=0, n_starts=60, n_sims=60_000):  # pragma: no cover
     fits = multistart(prob, x_obs, n_starts=n_starts, seed=seed, verbose=True)
     arr = np.array([f["theta"] for f in fits])
     starts = np.array([f["theta0"] for f in fits])
+    span = prob.prior_span()
+    print(f"{'parameter':>13} {'fitted spread':>14} {'drift |fit-start|':>18} "
+          f"{'corr(start,fit)':>16}")
     for i, n in enumerate(names):
         r = np.corrcoef(starts[:, i], arr[:, i])[0, 1]
-        print(f"  {n:>12}: fitted spread {arr[:, i].std():9.4f}   "
-              f"corr(start, fit) = {r:+.3f}")
-    print("\n  J_CH is fixed by the data; its correlation with the starting")
-    print("  guess is nil. J_HH tracks its starting guess essentially one for")
-    print("  one, because every value fits equally well.")
+        drift = np.mean(np.abs(arr[:, i] - starts[:, i]))
+        print(f"{n:>13} {arr[:, i].std():>14.4g} "
+              f"{drift:>13.4g} ({drift / span[i]:>4.0%}) {r:>16.3f}")
+
+    i = names.index("J_HH")
+    prior_sd = span[i] / np.sqrt(12)
+    print(f"\n  J_CH is fixed by the data: every start lands within "
+          f"{np.abs(arr[:, names.index('J_CH')] - theta_true[0]).max() * 1e3:.2g}"
+          f" mHz of the truth.")
+    print(f"\n  J_HH is not merely unidentified -- it is arbitrary. The fitted")
+    print(f"  values span {arr[:, i].min():.1f} to {arr[:, i].max():.1f} Hz "
+          f"across a [{prob.low[i]:.0f}, {prob.high[i]:.0f}] prior, with a")
+    print(f"  spread of {arr[:, i].std():.1f} Hz -- wider than the prior's own "
+          f"{prior_sd:.1f} Hz, because")
+    print(f"  the simplex drifts along the flat direction until the box stops")
+    print(f"  it. It does not even return the guess it was given: the mean")
+    print(f"  drift is {np.mean(np.abs(arr[:, i] - starts[:, i])):.1f} Hz, and "
+          f"the correlation with the start is only")
+    print(f"  {np.corrcoef(starts[:, i], arr[:, i])[0, 1]:+.2f}. The number is "
+          f"noise, and it is reported with an error bar.")
 
     print("\n" + "-" * 88)
     print("4. WHAT THE NETWORK REPORTS INSTEAD")
