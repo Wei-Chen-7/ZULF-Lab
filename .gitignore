@@ -2,3 +2,5 @@
 *.log
 __pycache__/
 sbi-logs/
+# Generated: 769 KB of base64-embedded figures. Rebuild with make_demo_page.py.
+zulf_demo_page.html
