@@ -212,18 +212,24 @@ python train_library.py         # trains what is missing, reports all
 Four molecules, each network cached in `models/` with a `manifest.json` saying
 what it measures and what it cannot:
 
-| molecule | spins | measured | 95% width | floor | flat | efficiency |
-|---|---|---|---|---|---|---|
-| formic acid | 2 | J_CH | 2.24 mHz | 2.263 | — | 24.3% |
-| formaldehyde | 3 | J_CH | 1.30 mHz | 1.307 | J_HH | 7.5% |
-| glycine | 3 | J_CH | 1.30 mHz | 1.307 | J_HH | 7.0% |
-| methanol | 4 | J_CH | 1.01 mHz | 1.012 | J_HH | 10.1% |
+| molecule | spins | measured | 95% width | floor | ratio | flat | efficiency |
+|---|---|---|---|---|---|---|---|
+| formic acid | 2 | J_CH | 2.29 mHz | 2.263 | 1.01 | — | 24.2% |
+| formaldehyde | 3 | J_CH | 1.31 mHz | 1.307 | 1.00 | J_HH | 7.6% |
+| glycine | 3 | J_CH | 1.31 mHz | 1.307 | 1.00 | J_HH | 7.1% |
+| methanol | 4 | J_CH | 1.04 mHz | 1.012 | 1.03 | J_HH | 9.8% |
 
-**Every network saturates its own information floor**, and so do the nuisances —
-formic acid's |B| floor is 84.9 mHz against a measured 85.1, its θ_B floor 4.14°
-against 4.01°.
+**Every network reaches its own information floor**, and so do the nuisances:
+on formic acid the four measured widths come in at 1.011, 1.013, 0.985 and 1.050
+times their floors for J, |B|, θ_B and T₂.
 
-Precision *improves* with spin count, which is not an accident and not noise.
+The flat J_HH is the other half of the check. Its shrinkage across the three
+molecules that have one is −0.001, −0.003 and +0.011 — scattering around zero
+and occasionally *negative*, since a posterior identical to the prior estimates
+a width that fluctuates either side of it. That is what no information looks
+like, and it is why the value is labelled rather than quoted.
+
+Precision *improves* across this series, which is not an accident and not noise.
 The floor is not σ_f/√n: XA₂ puts its line at 3/2 J and XA₃ at J and 2J, so the
 lines move **faster** than J and a given σ_f buys a tighter J. `information_floor()`
 computes it from the Fisher information of the simulator, so it is right for any
@@ -260,26 +266,26 @@ wide as the prior. Precision comes from the exact likelihood; the proposal only
 sets efficiency.
 
 **SBC says the network is conservative, not overconfident.** On J the ranks are
-depleted at the edges (outer 20% holds 0.043 of the mass against 0.20 expected)
+depleted at the edges (outer 20% holds 0.057 of the mass against 0.20 expected)
 and heavy in the centre — the signature of a posterior that is too *wide*. |B|,
 θ_B and T2 come back calibrated. Too-wide is the safe direction, and it is
 precisely why importance reweighting has good coverage.
 
 ![SBC ranks](sbc_ranks.png)
 
-**Efficiency varies ~30× between observations** — 1.6% to 45.3% over 40 draws
-from the prior, median 26.7%, none below 1%. This matters for the project's
+**Efficiency varies ~30× between observations** — 1.5% to 45.5% over 40 draws
+from the prior, median 26.0%, none below 1%. This matters for the project's
 failure criterion, which is stated as a single number: the same network on the
-same model reads 1.6% on one spectrum and 45% on another. Quoting it over several
+same model reads 1.5% on one spectrum and 46% on another. Quoting it over several
 spectra, or with its spread, would be more robust than a single reading.
 
 *What drives the spread.* The obvious candidate — proximity to a resolution
 cliff, where the peak count changes and the network's smooth density is
-approximating something that is not smooth — is **refuted**: Spearman ρ = −0.06
-(p = 0.68) over 60 observations. Screening seven candidates, the only one to
-survive a Bonferroni correction is the true J_CH itself (ρ = −0.38,
-p_adj = 0.019): efficiency degrades toward the top of the J prior. Distance to
-the prior boundary is flat (ρ = 0.18), so it is not an edge effect either.
+approximating something that is not smooth — is **refuted**: Spearman ρ = −0.02
+(p = 0.87) over 60 observations. Screening seven candidates, the only one to
+survive a Bonferroni correction is the true J_CH itself (ρ = −0.41,
+p_adj = 0.009): efficiency degrades toward the top of the J prior. Distance to
+the prior boundary is flat (ρ = 0.17), so it is not an edge effect either.
 
 That points at the flow's own fit to the posterior rather than at the physics.
 Suggestive at n = 60, not established — but the practical consequence is the
@@ -290,10 +296,10 @@ same either way: **read the efficiency criterion over several spectra, not one.*
 | | J 95% width |
 |---|---|
 | nested sampling (reference) | 2.24 mHz |
-| reweighted NPE | 2.27 mHz |
+| reweighted NPE | 2.29 mHz |
 | local fit (curvature) | 2.26 mHz |
 | information floor | 2.26 mHz |
-| agreement, NPE vs nested | **1.5%** |
+| agreement, NPE vs nested | **2.2%** |
 
 Earlier, at 1.7% efficiency, the same comparison agreed only to 4%. At ESS ≈ 340
 the reweighted quantiles carry ~5% Monte Carlo error, so **low efficiency
@@ -307,9 +313,10 @@ python make_figure2.py          # writes figure2_posterior.png
 
 ![figure 2](figure2_posterior.png)
 
-Prior 5700 mHz → raw network proposal 5.40 → reweighted 2.289 → floor 2.263.
-The reweighted posterior sits at **1.01× the information floor**, and the four
-parameters come back essentially uncorrelated (|r| ≤ 0.02).
+Prior 5700 mHz → raw network proposal → reweighted 2.289 → floor 2.263. The
+reweighted posterior sits at **1.01× the information floor** at 24.2% efficiency
+(ESS 4838), and the four parameters come back essentially uncorrelated
+(|r| ≤ 0.02).
 
 ### Figure 4 — against exact sampling and against ref [1]
 
@@ -372,8 +379,8 @@ rule has to be an instrument constant — and it now is (`InferenceProblem.merge
 What changed:
 
 * the Hessian is positive definite at the truth; it was not before;
-* nested sampling on the exact likelihood gives **2.24 mHz** on J, exactly the
-  information floor (ratio 0.99);
+* nested sampling on the exact likelihood gives **2.24 mHz** on J, which is the
+  information floor to within its own Monte Carlo error (ratio 0.99);
 * the apparent multi-modality of the local fit was *entirely* this bug — 1.5% of
   starts had stalled at a Δχ²/2 of 277 619. After the fix, **200 of 200 starts
   find the same minimum**, agreeing on J to 2 × 10⁻⁷ Hz.
@@ -406,15 +413,15 @@ accuracy — only on cost per spectrum after training.
 
 **(b) With a flat direction, the fit returns an arbitrary number.** On methanol
 the Hessian is singular in J_HH. Inverting it does not fail; it returns a 95%
-interval of **2 375 214 Hz against a 30 Hz prior** and prints it as an error bar.
+interval of **1 788 122 Hz against a 30 Hz prior** and prints it as an error bar.
 
 The fitted *value* is no better. Over 60 starts J_HH fills its whole prior with
 a spread of ~11 Hz — wider than the prior's own 8.7 Hz, because the simplex
 drifts along the flat direction until the box stops it. It is not even the guess
 handed back: the mean drift from the starting value is ~9 Hz, and the
-correlation with the start is weak and *not reproducible* — +0.20 and +0.42 on
-two different noise realizations of the same observation. The number is noise,
-and it comes with an error bar.
+correlation with the start is weak and *not stable* — +0.42 here, and +0.20 on
+a different observation of the same system. The number is noise, and it comes
+with an error bar.
 
 The contrast is in the spread, not the drift: every parameter drifts ~30% of its
 prior, because a random start is on average that far from the answer. But J_CH's
@@ -425,7 +432,7 @@ prior, because a random start is on average that far from the answer. But J_CH's
 widths first (raw eigenvalues carry their parameters' units and cannot be
 compared across them) so each eigenvalue is (prior width / posterior width)²,
 making 1 the meaningful threshold. On methanol the scaled spectrum is
-`2.4e-9, 1.9e3, 1.2e4, 2.3e4, 5.4e8` — one flat direction, loading 1.00 on J_HH.
+`4.3e-9, 1.9e3, 1.2e4, 2.3e4, 5.4e8` — one flat direction, loading 1.00 on J_HH.
 
 **(c) With two modes, the fit sees one.** θ_B and 180° − θ_B give log-likelihoods
 identical to twelve decimals. Started at 70° the fit returns 54.4 ± 2.0°; started

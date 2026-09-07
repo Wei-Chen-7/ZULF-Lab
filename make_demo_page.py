@@ -247,7 +247,7 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
     <span class="chip on">Forward model validated &middot; 7.2 mHz RMS</span>
     <span class="chip on">4 trained networks, all at their information floor</span>
     <span class="chip on">Calibrated (SBC) &middot; exact-likelihood reference</span>
-    <span class="chip on">168 tests</span>
+    <span class="chip on">175 tests</span>
     <span class="chip off">Figure 5 &mdash; needs archived spectra</span>
   </div>
 </header>
@@ -263,7 +263,8 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
 
   <div class="scroll">
     <table>
-      <caption>Reweighted posteriors on <span class="mono">&sigma;<sub>f</sub></span> = 1 mHz peak-position noise</caption>
+      <caption>Reweighted posteriors on <span class="mono">&sigma;<sub>f</sub></span> = 1 mHz
+      peak-position noise &middot; efficiency = effective sample size / draws, after reweighting</caption>
       <thead>
         <tr>
           <th>Molecule</th><th>Spins</th><th>Measured</th>
@@ -273,22 +274,27 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
       </thead>
       <tbody>
         <tr><td>[<sup>13</sup>C]-formic acid</td><td>2</td><td>J<sub>CH</sub></td>
-            <td>2.24 <span class="unit">mHz</span></td><td>2.263</td><td>0.99</td>
-            <td class="none">&mdash;</td><td>24.3%</td></tr>
+            <td>2.29 <span class="unit">mHz</span></td><td>2.263</td><td>1.01</td>
+            <td class="none">&mdash;</td><td>24.2%</td></tr>
         <tr><td>[<sup>13</sup>C]-formaldehyde</td><td>3</td><td>J<sub>CH</sub></td>
-            <td>1.30 <span class="unit">mHz</span></td><td>1.307</td><td>0.99</td>
-            <td class="flat">J<sub>HH</sub></td><td>7.5%</td></tr>
+            <td>1.31 <span class="unit">mHz</span></td><td>1.307</td><td>1.00</td>
+            <td class="flat">J<sub>HH</sub></td><td>7.6%</td></tr>
         <tr><td>[<sup>13</sup>C]-glycine</td><td>3</td><td>J<sub>CH</sub></td>
-            <td>1.30 <span class="unit">mHz</span></td><td>1.307</td><td>0.99</td>
-            <td class="flat">J<sub>HH</sub></td><td>7.0%</td></tr>
+            <td>1.31 <span class="unit">mHz</span></td><td>1.307</td><td>1.00</td>
+            <td class="flat">J<sub>HH</sub></td><td>7.1%</td></tr>
         <tr><td>[<sup>13</sup>C]-methanol</td><td>4</td><td>J<sub>CH</sub></td>
-            <td>1.01 <span class="unit">mHz</span></td><td>1.012</td><td>1.00</td>
-            <td class="flat">J<sub>HH</sub></td><td>10.1%</td></tr>
+            <td>1.04 <span class="unit">mHz</span></td><td>1.012</td><td>1.03</td>
+            <td class="flat">J<sub>HH</sub></td><td>9.8%</td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="col stack" style="margin-top:26px">
+    <p>Efficiency is the fraction of the network&rsquo;s draws that survive reweighting, and it is
+    also the misspecification detector: on real data it is meant to collapse when the model is
+    wrong. It varies by ~30&times; between observations of the <em>same</em> molecule with the
+    <em>same</em> network, which is why the project&rsquo;s pass/fail threshold on it should be read
+    over several spectra rather than one.</p>
     <p>Precision <em>improves</em> across this series, which is not noise. The floor is not
     <span class="mono">&sigma;<sub>f</sub>/&radic;n</span>: XA<sub>2</sub> puts its line at
     <span class="mono">3/2&nbsp;J</span> and XA<sub>3</sub> at <span class="mono">J</span> and
@@ -372,8 +378,8 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
     </div>
     <div class="barrow">
       <div class="who">J<sub>HH</sub><em>formaldehyde</em></div>
-      <div class="track"><div class="fill thin" style="width:1.3%"></div></div>
-      <div class="val">0.013</div>
+      <div class="track"><div class="fill thin" style="width:0.5%"></div></div>
+      <div class="val">&minus;0.001</div>
     </div>
     <div class="barrow">
       <div class="who">J<sub>CH</sub><em>methanol</em></div>
@@ -381,12 +387,20 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
       <div class="val">1.000</div>
     </div>
     <div class="barrow">
+      <div class="who">J<sub>HH</sub><em>glycine</em></div>
+      <div class="track"><div class="fill thin" style="width:0.5%"></div></div>
+      <div class="val">&minus;0.003</div>
+    </div>
+    <div class="barrow">
       <div class="who">J<sub>HH</sub><em>methanol</em></div>
-      <div class="track"><div class="fill thin" style="width:1%"></div></div>
-      <div class="val">0.010</div>
+      <div class="track"><div class="fill thin" style="width:1.1%"></div></div>
+      <div class="val">0.011</div>
     </div>
   </div>
-  <p class="barnote">shrinkage = 1 &minus; posterior width / prior width &nbsp;&middot;&nbsp; 1.000 = pinned down, 0.010 = the posterior is the prior</p>
+  <p class="barnote">shrinkage = 1 &minus; posterior width / prior width &nbsp;&middot;&nbsp;
+  1.000 = pinned down. The J<sub>HH</sub> values scatter either side of zero
+  (&minus;0.003 to +0.011) because a posterior identical to the prior estimates a width that
+  fluctuates around it &mdash; a slightly negative shrinkage is what no information looks like.</p>
 
   <div class="pull">
     <div class="big">Given the same methanol spectrum, a least-squares fit reports
@@ -425,8 +439,9 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
       <div class="figtag"><span class="num">Figure 2</span>
         <h3>The posterior, and its spread</h3></div>
       <div class="plate"><img src="__FIG2__" alt="Corner plot of the four-parameter posterior for formic acid with an inset bar chart comparing prior, raw network proposal, reweighted posterior and information floor."></div>
-      <figcaption>Prior 5700 mHz &rarr; raw network proposal 5.40 &rarr; reweighted 2.289 &rarr; floor
-      2.263. <b>The posterior lands at 1.01&times; the information floor.</b> Drawn on zoomed axes with the
+      <figcaption>Prior 5700 mHz &rarr; raw network proposal &rarr; reweighted 2.289 &rarr; floor
+      2.263. <b>The posterior lands at 1.01&times; the information floor</b>, at 24.2% sampling
+      efficiency (effective sample size 4838 out of 20&#8239;000). Drawn on zoomed axes with the
       prior width written on each panel: on the prior&rsquo;s own axes the J posterior is a vertical line
       1/2500th of the frame wide, which looks impressive and hides the nuisance correlations a referee
       would actually interrogate. They come back below 0.02.</figcaption>
@@ -438,7 +453,7 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
       <div class="plate"><img src="__FIG3__" alt="Simulation-based calibration rank histograms for the four parameters, with the uniform expectation band."></div>
       <figcaption>Simulation-based calibration over 300 trials. The failure that matters is ranks piling
       at the <em>edges</em>, meaning the posterior is too narrow and the network is confidently wrong.
-      <b>The opposite happens:</b> on J the outer 20% holds 0.043 of the mass against 0.20 expected &mdash;
+      <b>The opposite happens:</b> on J the outer 20% holds 0.057 of the mass against 0.20 expected &mdash;
       too wide, the safe direction, and precisely why importance reweighting has good coverage. The three
       nuisance parameters come back calibrated.</figcaption>
     </figure>
@@ -448,12 +463,13 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
         <h3>Against exact sampling, and against the standard method</h3></div>
       <div class="plate"><img src="__FIG4__" alt="Three panels: overlapping posteriors from nested sampling, the network and a local fit; a scatter of fitted versus starting values for methanol; and a bimodal angle posterior with the local fit's two answers."></div>
       <figcaption>Three panels because the comparison has three answers, and showing only the flattering
-      one would be dishonest. <b>(a)</b> On formic acid all three agree &mdash; nested sampling 2.24 mHz,
-      network 2.27, local curvature 2.26 &mdash; and 200 of 200 random starts find one minimum, so the
+      one would be dishonest. <b>(a)</b> On formic acid all three agree to about 2% &mdash; nested
+      sampling 2.24 mHz, network 2.29, local curvature 2.26 &mdash; and 200 of 200 random starts find
+      the same minimum, agreeing on J to 2&times;10<sup>&minus;7</sup> Hz, so the
       local fit is not the weak link here. <b>(b)</b> On methanol the fit returns an arbitrary number for
       the flat direction. <b>(c)</b> &theta;<sub>B</sub> and 180&deg;&minus;&theta;<sub>B</sub> give
       log-likelihoods identical to 5&times;10<sup>&minus;13</sup>; the network holds both modes at
-      49/51, the fit returns 54.4 &plusmn; 2.0&deg; or 125.6 &plusmn; 2.0&deg; depending only on where it
+      51/49, the fit returns 54.4 &plusmn; 2.0&deg; or 125.6 &plusmn; 2.0&deg; depending only on where it
       started.</figcaption>
     </figure>
 
@@ -484,20 +500,20 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
     <div class="note warn">
       <div class="eyebrow">Refuted</div>
       <h3>Resolution cliffs do not drive the efficiency spread</h3>
-      <p>A peak list is a discontinuous observable, so the obvious explanation for the ~30&times; spread in
+      <p>A peak list is a discontinuous observable, so the obvious explanation for the ~31&times; spread in
       sampling efficiency was proximity to a jump. It is wrong: Spearman
-      <span class="mono">&rho; = &minus;0.06</span> (p = 0.68) over 60 observations. Screening seven
+      <span class="mono">&rho; = &minus;0.02</span> (p = 0.87) over 60 observations. Screening seven
       candidates, the only survivor of a Bonferroni correction is the true J<sub>CH</sub> itself
-      (<span class="mono">&rho; = &minus;0.38</span>, p<sub>adj</sub> = 0.019) &mdash; a property of the
+      (<span class="mono">&rho; = &minus;0.41</span>, p<sub>adj</sub> = 0.009) &mdash; a property of the
       flow, not the physics.</p>
     </div>
     <div class="note warn">
       <div class="eyebrow">Does not win</div>
       <h3>Amortization loses on raw speed</h3>
-      <p>Training costs <span class="mono">1973 s</span> once, then <span class="mono">3.95 s</span> per
-      spectrum &mdash; against <span class="mono">1.48 s</span> for a single well-started local fit. The
+      <p>Training costs <span class="mono">1973 s</span> once, then <span class="mono">4.98 s</span> per
+      spectrum &mdash; against <span class="mono">1.56 s</span> for a single well-started local fit. The
       network only wins against the 200-start protocol you would need to be sure, where break-even is
-      <b>7 spectra</b>. The honest argument for it is global search and multimodality, not throughput.</p>
+      <b>6 spectra</b>. The honest argument for it is global search and multimodality, not throughput.</p>
     </div>
     <div class="note warn">
       <div class="eyebrow">My own bug</div>
@@ -585,7 +601,7 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
 </section>
 
 <footer>
-  Reproducible from the repository: <span class="mono">pytest -q</span> &rarr; 168 passing &middot;
+  Reproducible from the repository: <span class="mono">pytest -q</span> &rarr; 175 passing &middot;
   <span class="mono">python train_library.py</span> trains and caches the four networks &middot;
   <span class="mono">python local_baseline.py</span> runs the three-case comparison &middot;
   figures from <span class="mono">make_figure1.py</span>, <span class="mono">make_figure2.py</span>,
