@@ -295,6 +295,11 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
     wrong. It varies by ~30&times; between observations of the <em>same</em> molecule with the
     <em>same</em> network, which is why the project&rsquo;s pass/fail threshold on it should be read
     over several spectra rather than one.</p>
+    <p>These are not the best figures available, and it is worth saying so: a wider flow reaches
+    <b>37%</b> against the 24% above on formic acid, at the same reweighted precision. Every result
+    here uses the narrower one, because the precision is set by the exact likelihood and only the
+    efficiency moves &mdash; but there is roughly 1.5&times; of headroom on the detector before any
+    real data arrives.</p>
     <p>Precision <em>improves</em> across this series, which is not noise. The floor is not
     <span class="mono">&sigma;<sub>f</sub>/&radic;n</span>: XA<sub>2</sub> puts its line at
     <span class="mono">3/2&nbsp;J</span> and XA<sub>3</sub> at <span class="mono">J</span> and

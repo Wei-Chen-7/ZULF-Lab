@@ -1,32 +1,32 @@
 [
   {
     "label": "baseline: 50k, nsf default",
-    "raw_mHz": 11.109161376964494,
-    "reweighted_mHz": 2.25830078125,
-    "efficiency": 0.12054499249708807,
-    "floor_mHz": 2.263213055223333,
+    "raw_mHz": 9.58251953125,
+    "reweighted_mHz": 2.2735595703125,
+    "efficiency": 0.23413638489833363,
+    "floor_mHz": 2.2632130652002074,
     "prior_mHz": 6000.0,
-    "raw_over_floor": 4.908579575098044,
-    "train_s": 585.502226153
+    "raw_over_floor": 4.23403332129594,
+    "train_s": 585.136589271
   },
   {
     "label": "150k sims, nsf default",
-    "raw_mHz": 5.8441162109375,
-    "reweighted_mHz": 2.2430419921875,
-    "efficiency": 0.30283122463079776,
-    "floor_mHz": 2.263213055223333,
+    "raw_mHz": 5.37109375,
+    "reweighted_mHz": 2.288818359375,
+    "efficiency": 0.2419040884865793,
+    "floor_mHz": 2.2632130652002074,
     "prior_mHz": 6000.0,
-    "raw_over_floor": 2.582220970071598,
-    "train_s": 2144.000140651
+    "raw_over_floor": 2.3732161291340303,
+    "train_s": 2094.8332902720003
   },
   {
     "label": "150k sims, nsf wide (96 feat, 8 transforms)",
-    "raw_mHz": 5.2032470703125,
-    "reweighted_mHz": 2.227783203125,
-    "efficiency": 0.09035339615898111,
-    "floor_mHz": 2.263213055223333,
+    "raw_mHz": 4.94384765625,
+    "reweighted_mHz": 2.2430419921875,
+    "efficiency": 0.37368289940275334,
+    "floor_mHz": 2.2632130652002074,
     "prior_mHz": 6000.0,
-    "raw_over_floor": 2.2990531352334593,
-    "train_s": 2055.2704900730005
+    "raw_over_floor": 2.1844375734074597,
+    "train_s": 2424.3845080899996
   }
 ]

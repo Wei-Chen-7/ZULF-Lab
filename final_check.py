@@ -9,8 +9,8 @@ Two questions, both settled against the same trained proposal:
 
 2. **How much does sampling efficiency move between observations?** The failure
    criterion is stated as a single number, but efficiency is a property of the
-   particular observation. The sweep produced 1.7% and 12% for the *same*
-   configuration on two different noise realizations, so the spread needs
+   particular observation, not just of the network. It ranges over 1.5% to 45%
+   across draws from the same prior with the same network, so the spread needs
    measuring before a single-observation threshold can mean anything.
 
 Also re-checks the reweighted posterior against the stored nested-sampling
@@ -24,7 +24,11 @@ import numpy as np
 import zulf_infer as zi
 import sbc_check as sc
 
-N_SIMS = 150_000            # the configuration that won the sweep
+# The nsf default. tighten_proposal.py finds the wide flow (96 features, 8
+# transforms) reaches 37% efficiency against this one's 24%, at the same
+# reweighted precision -- so this is not the best proposal, only the one every
+# other result here was computed with.
+N_SIMS = 150_000
 SEED = 0
 
 
@@ -36,8 +40,7 @@ def main():
     except FileNotFoundError:
         ref = None
 
-    print(f"training/loading NPE on {N_SIMS} simulations (the sweep winner) ...",
-          flush=True)
+    print(f"training/loading NPE on {N_SIMS} simulations ...", flush=True)
     posterior, _ = zi.train_or_load(prob, tag="formic_acid_150k", n_sims=N_SIMS,
                                     seed=SEED, max_num_epochs=150)
 

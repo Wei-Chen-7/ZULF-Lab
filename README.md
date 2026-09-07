@@ -254,16 +254,31 @@ python final_check.py        # SBC + efficiency spread on the tightened network
 SNR ≈ 24 at T2 = 10 s, so it was *conservative*. (Idealised: one isolated line,
 correct lineshape, flat baseline.)
 
-**Tightening the proposal.** 150k simulations halve the raw NPE width
-(11.1 → 5.8 mHz) and lift efficiency from 12% to 30%. A wider flow gave the
-tightest proposal (2.3× floor) but the *worst* efficiency (9%) — efficiency does
-not track width alone, since a narrow but mis-centred proposal produces extreme
-weights.
+**Tightening the proposal.**
 
-**Reweighted precision is invariant.** ~2.24 mHz across every configuration
-tried, including one deliberately undertrained network whose raw proposal was as
-wide as the prior. Precision comes from the exact likelihood; the proposal only
-sets efficiency.
+| configuration | raw width | raw/floor | reweighted | efficiency |
+|---|---|---|---|---|
+| 50k sims, nsf default | 9.58 mHz | 4.23× | 2.27 mHz | 23.4% |
+| 150k sims, nsf default | 5.37 mHz | 2.37× | 2.29 mHz | 24.2% |
+| **150k sims, nsf wide** (96 features, 8 transforms) | **4.94 mHz** | **2.18×** | 2.24 mHz | **37.4%** |
+
+Tripling the simulations nearly halves the raw proposal width but barely moves
+efficiency (23.4% → 24.2%); widening the flow is what lifts it, to 37.4%.
+Efficiency tracks how close the proposal sits to the true posterior — the
+raw/floor column — monotonically across all three.
+
+> This corrects an earlier reading. Before the merge-width fix and the RNG
+> seeding, this sweep appeared to show the wide flow giving the *tightest*
+> proposal and the *worst* efficiency, and the section concluded that
+> "efficiency does not track width alone". That was an artefact. It does track
+> it here.
+
+**Reweighted precision is invariant.** 2.24–2.29 mHz across all three
+configurations, against raw proposals that differ by a factor of two. Precision
+comes from the exact likelihood; the proposal only sets efficiency — which is
+why the rest of this README uses the 150k default network even though the wide
+flow is the better proposal. Switching would buy ~1.5× efficiency and change no
+reported width.
 
 **SBC says the network is conservative, not overconfident.** On J the ranks are
 depleted at the edges (outer 20% holds 0.057 of the mass against 0.20 expected)
