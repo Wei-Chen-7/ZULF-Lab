@@ -3,6 +3,12 @@
 Edit and send the text below the line. Two things to fill in: the supervisor's
 name, and the deadline in the closing paragraph if you want one.
 
+Unlike the README and the demo page, this draft is *not* generated from
+`results.json` — it is a one-off you will edit before sending, and regenerating
+it would fight that. So if it sits unsent for a while, re-check the three
+figures it quotes (7.2 mHz, 1.0–2.3 mHz, ~2%) against `python results.py --show`
+before it goes out.
+
 The split matters. **Essential** is what Figure 5 cannot be made without.
 **Helpful** is what stops us having to assume something and defend the
 assumption in the paper. Ask for both, but make clear that the first three are
