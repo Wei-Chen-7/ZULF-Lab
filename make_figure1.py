@@ -26,6 +26,8 @@ from __future__ import annotations
 import sys
 
 import numpy as np
+
+import results
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -175,6 +177,15 @@ def main(pdf_path):
     print(f"  mean offset      : {d_mHz[strong].mean():+7.1f} mHz")
     print(f"  scatter about it : {d_mHz[strong].std():7.1f} mHz  <-- the real test")
     print(f"  range            : {d_mHz[strong].min():+.1f} to {d_mHz[strong].max():+.1f} mHz")
+    results.record("figure1", dict(
+        n_peaks=int(len(pk)), n_strong=int(strong.sum()),
+        mean_offset_mHz=float(d_mHz[strong].mean()),
+        scatter_mHz=float(d_mHz[strong].std()),
+        min_offset_mHz=float(d_mHz[strong].min()),
+        max_offset_mHz=float(d_mHz[strong].max()),
+        anchor_pt=float(abs(d_mHz[strong].mean()) * 1e-3 * PT_PER_HZ),
+        pt_per_hz=float(PT_PER_HZ)))
+
     print("\nEvery strong peak is offset the same way, which is the signature of an")
     print("axis-anchor offset rather than a physics error: a residual field would")
     print(f"shift lines differentially. {abs(d_mHz[strong].mean())*1e-3*PT_PER_HZ:.2f} pt out of "

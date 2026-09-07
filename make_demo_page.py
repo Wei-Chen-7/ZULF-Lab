@@ -16,6 +16,8 @@ shows, the negative results, and what the archive still has to supply.
 import base64
 import pathlib
 
+import results
+
 FIGURES = {
     "fig1": "figure1_model_over_published.png",
     "fig2": "figure2_posterior.png",
@@ -24,9 +26,36 @@ FIGURES = {
 }
 
 
+LABELS = {"formic_acid": "[<sup>13</sup>C]-formic acid",
+          "formaldehyde": "[<sup>13</sup>C]-formaldehyde",
+          "glycine": "[<sup>13</sup>C]-glycine",
+          "methanol": "[<sup>13</sup>C]-methanol"}
+ORDER = ["formic_acid", "formaldehyde", "glycine", "methanol"]
+
+
 def data_uri(path):
     return "data:image/png;base64," + base64.b64encode(
         pathlib.Path(path).read_bytes()).decode()
+
+
+def library_rows(lib):
+    """The results table, rendered from results.json rather than typed."""
+    out = []
+    for name in ORDER:
+        m = lib.get(name)
+        if not m:
+            continue
+        meas = ", ".join(f"J<sub>{p.split('_')[1]}</sub>" for p in m["measured"])
+        flat = ", ".join(f"J<sub>{p.split('_')[1]}</sub>" for p in m["flat"])
+        flat_cell = (f'<td class="flat">{flat}</td>' if flat
+                     else '<td class="none">&mdash;</td>')
+        out.append(
+            f'        <tr><td>{LABELS.get(name, name)}</td>'
+            f'<td>{m["n_spins"]}</td><td>{meas}</td>\n'
+            f'            <td>{m["width_mHz"]:.2f} <span class="unit">mHz</span></td>'
+            f'<td>{m["floor_mHz"]:.3f}</td><td>{m["ratio"]:.2f}</td>\n'
+            f'            {flat_cell}<td>{100 * m["efficiency"]:.1f}%</td></tr>')
+    return "\n".join(out)
 
 HTML = r"""<title>Zero-Field J Readout</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -273,18 +302,7 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
         </tr>
       </thead>
       <tbody>
-        <tr><td>[<sup>13</sup>C]-formic acid</td><td>2</td><td>J<sub>CH</sub></td>
-            <td>2.29 <span class="unit">mHz</span></td><td>2.263</td><td>1.01</td>
-            <td class="none">&mdash;</td><td>24.2%</td></tr>
-        <tr><td>[<sup>13</sup>C]-formaldehyde</td><td>3</td><td>J<sub>CH</sub></td>
-            <td>1.31 <span class="unit">mHz</span></td><td>1.307</td><td>1.00</td>
-            <td class="flat">J<sub>HH</sub></td><td>7.6%</td></tr>
-        <tr><td>[<sup>13</sup>C]-glycine</td><td>3</td><td>J<sub>CH</sub></td>
-            <td>1.31 <span class="unit">mHz</span></td><td>1.307</td><td>1.00</td>
-            <td class="flat">J<sub>HH</sub></td><td>7.1%</td></tr>
-        <tr><td>[<sup>13</sup>C]-methanol</td><td>4</td><td>J<sub>CH</sub></td>
-            <td>1.04 <span class="unit">mHz</span></td><td>1.012</td><td>1.03</td>
-            <td class="flat">J<sub>HH</sub></td><td>9.8%</td></tr>
+__LIBROWS__
       </tbody>
     </table>
   </div>
@@ -617,7 +635,12 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
 """
 
 def main():
-    html = HTML
+    data = results.load()
+    lib = data.get("library")
+    if not lib:
+        raise SystemExit("results.json has no library section; run "
+                         "train_library.py first")
+    html = HTML.replace("__LIBROWS__", library_rows(lib))
     for key, name in FIGURES.items():
         if not pathlib.Path(name).exists():
             raise SystemExit(f"missing {name}; regenerate the figures first")

@@ -28,6 +28,7 @@ import time
 import numpy as np
 
 import zulf_infer as zi
+import results
 
 MANIFEST = os.path.join(zi.MODEL_DIR, "manifest.json")
 
@@ -73,7 +74,7 @@ def build(name, spec, seed=SEED, force=False, n_post=20000):
 def main():  # pragma: no cover - study
     force = "--force" in sys.argv
     np.set_printoptions(suppress=True)
-    manifest, summary = {}, []
+    manifest, summary, rows_by_name = {}, [], {}
 
     for name, spec in LIBRARY.items():
         print(f"\n{'=' * 84}\n{name}\n{'=' * 84}", flush=True)
@@ -110,6 +111,7 @@ def main():  # pragma: no cover - study
                         for r in couplings},
             shrinkage={r["param"]: float(r["shrinkage"]) for r in couplings})
         summary.append((name, prob, measured, flat, m))
+        rows_by_name[name] = couplings
 
     print(f"\n\n{'=' * 84}")
     print("LIBRARY SUMMARY -- what each network measures")
@@ -131,6 +133,22 @@ def main():  # pragma: no cover - study
     os.makedirs(zi.MODEL_DIR, exist_ok=True)
     with open(MANIFEST, "w") as fh:
         json.dump(manifest, fh, indent=2, sort_keys=True)
+
+    # The store is what every document renders from; see results.py.
+    LABELS = {"formic_acid": "formic acid", "formaldehyde": "formaldehyde",
+              "glycine": "glycine", "methanol": "methanol"}
+    lib = {}
+    for name, prob, measured, flat, m in summary:
+        floor = zi.information_floor(prob, LIBRARY[name]["truth"])[0] * 1e3
+        width = measured[0]["post_width"] * 1e3 if measured else float("nan")
+        lib[name] = dict(label=LABELS.get(name, name), n_spins=int(prob.sys.n),
+                         measured=[r["param"] for r in measured],
+                         flat=[r["param"] for r in flat],
+                         width_mHz=width, floor_mHz=floor, ratio=width / floor,
+                         efficiency=float(m["efficiency"]),
+                         shrinkage={r["param"]: float(r["shrinkage"])
+                                    for r in rows_by_name[name]})
+    results.record("library", lib)
     print(f"\nwrote {MANIFEST} and {len(LIBRARY)} networks in {zi.MODEL_DIR}/")
 
 

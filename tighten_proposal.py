@@ -22,6 +22,7 @@ import time
 import numpy as np
 
 import zulf_infer as zi
+import results
 
 # Capped at 150 epochs so the sweep stays bounded; the baseline converged in
 # 123 epochs, so this is not a binding constraint for it.
@@ -60,6 +61,13 @@ def main():
               f"eff {m['efficiency']:6.2%}  "
               f"raw/floor {m['raw_over_floor']:5.1f}x  "
               f"({train_s/60:.1f} min)", flush=True)
+
+    results.record("tighten", dict(configs=[
+        dict(label=r["label"], raw_mHz=r["raw_mHz"],
+             reweighted_mHz=r["reweighted_mHz"], efficiency=r["efficiency"],
+             raw_over_floor=r["raw_over_floor"]) for r in rows],
+        best_efficiency=max(r["efficiency"] for r in rows),
+        baseline_efficiency=rows[0]["efficiency"]))
 
     print("\n" + "=" * 92)
     print("Sample efficiency is set by how close the proposal is to the true")

@@ -23,6 +23,7 @@ import time
 import numpy as np
 
 import zulf_infer as zi
+import results
 
 
 def make_observation(prob, theta_true, seed=0):
@@ -89,6 +90,10 @@ def main():  # pragma: no cover - study
     print(f"  ratio                          : {width / floor:8.2f}")
     print(f"\n  This is the reference. A reweighted NPE posterior that agrees")
     print(f"  with it is exact; one that does not is not, whatever its width.")
+
+    results.record("nested", dict(
+        n_samples=len(samples), seconds=elapsed, logz=logz, logzerr=logzerr,
+        J_width_mHz=width, floor_mHz=floor, ratio=width / floor))
 
     np.savez("nested_reference.npz", samples=samples, weights=w,
              theta_true=theta_true, x_obs=x_obs, logz=logz, logzerr=logzerr)

@@ -28,6 +28,29 @@ Everything is built from scratch with NumPy/SciPy/Matplotlib (no qutip, no
 spin-dynamics libraries — the operators and propagation are written by hand so
 the physics is explicit).
 
+### Every reported number comes from one place
+
+```bash
+python results.py            # re-render the README blocks and the LaTeX macros
+python results.py --check    # exit 1 if any document has drifted (for CI)
+python results.py --show     # print the store
+```
+
+Each study script records the numbers it owns into `results.json`; the README
+tables, `results_macros.tex` and the demo page all render from it. Nothing is
+transcribed by hand.
+
+This was not always true, and the cost showed up in an audit: a stale library
+table, a stale comparison table, a stale eigenvalue list, an error bar off by a
+factor of 1.3, and a *reversed* conclusion in the proposal-tightening section —
+all because four documents each copied the same run logs. `--check` is the test
+that could not be written before. A paper drafted against
+`results_macros.tex` (`\zLibraryMethanolWidthMhz` and friends) inherits the
+same guarantee.
+
+Blocks between `<!-- BEGIN generated: ... -->` markers are overwritten on every
+run; edit `results.py`, not the block.
+
 ### Status: what is done, and what is waiting on data
 
 | Deliverable | State |
@@ -212,12 +235,14 @@ python train_library.py         # trains what is missing, reports all
 Four molecules, each network cached in `models/` with a `manifest.json` saying
 what it measures and what it cannot:
 
+<!-- BEGIN generated: library -- edit results.py, not this block -->
 | molecule | spins | measured | 95% width | floor | ratio | flat | efficiency |
 |---|---|---|---|---|---|---|---|
 | formic acid | 2 | J_CH | 2.29 mHz | 2.263 | 1.01 | — | 24.2% |
 | formaldehyde | 3 | J_CH | 1.31 mHz | 1.307 | 1.00 | J_HH | 7.6% |
 | glycine | 3 | J_CH | 1.31 mHz | 1.307 | 1.00 | J_HH | 7.1% |
 | methanol | 4 | J_CH | 1.04 mHz | 1.012 | 1.03 | J_HH | 9.8% |
+<!-- END generated: library -->
 
 **Every network reaches its own information floor**, and so do the nuisances:
 on formic acid the four measured widths come in at 1.011, 1.013, 0.985 and 1.050
@@ -256,11 +281,13 @@ correct lineshape, flat baseline.)
 
 **Tightening the proposal.**
 
+<!-- BEGIN generated: tighten -- edit results.py, not this block -->
 | configuration | raw width | raw/floor | reweighted | efficiency |
 |---|---|---|---|---|
 | 50k sims, nsf default | 9.58 mHz | 4.23× | 2.27 mHz | 23.4% |
 | 150k sims, nsf default | 5.37 mHz | 2.37× | 2.29 mHz | 24.2% |
 | **150k sims, nsf wide** (96 features, 8 transforms) | **4.94 mHz** | **2.18×** | 2.24 mHz | **37.4%** |
+<!-- END generated: tighten -->
 
 Tripling the simulations nearly halves the raw proposal width but barely moves
 efficiency (23.4% → 24.2%); widening the flow is what lifts it, to 37.4%.
@@ -308,6 +335,7 @@ same either way: **read the efficiency criterion over several spectra, not one.*
 
 **Against nested sampling on the exact likelihood**, on the same observation:
 
+<!-- BEGIN generated: vs_nested -- edit results.py, not this block -->
 | | J 95% width |
 |---|---|
 | nested sampling (reference) | 2.24 mHz |
@@ -315,6 +343,7 @@ same either way: **read the efficiency criterion over several spectra, not one.*
 | local fit (curvature) | 2.26 mHz |
 | information floor | 2.26 mHz |
 | agreement, NPE vs nested | **2.2%** |
+<!-- END generated: vs_nested -->
 
 Earlier, at 1.7% efficiency, the same comparison agreed only to 4%. At ESS ≈ 340
 the reweighted quantiles carry ~5% Monte Carlo error, so **low efficiency

@@ -23,6 +23,7 @@ import numpy as np
 
 import zulf_infer as zi
 import sbc_check as sc
+import results
 
 # The nsf default. tighten_proposal.py finds the wide flow (96 features, 8
 # transforms) reaches 37% efficiency against this one's 24%, at the same
@@ -30,6 +31,14 @@ import sbc_check as sc
 # other result here was computed with.
 N_SIMS = 150_000
 SEED = 0
+
+
+def _local_sigma_J(prob, ref):
+    """The least-squares baseline's own error bar on J, same observation."""
+    import local_baseline as lb
+    fit = lb.local_fit(prob, ref["x_obs"], 0.5 * (prob.low + prob.high))
+    sigma, _, _, _ = lb.curvature_errors(prob, ref["x_obs"], fit["theta"])
+    return float(sigma[0])
 
 
 def main():
@@ -100,6 +109,25 @@ def main():
         print(f"  reweighted NPE  : {m['reweighted_mHz']:6.2f} mHz  "
               f"(efficiency {m['efficiency']:.1%})")
         print(f"  agreement       : {abs(m['reweighted_mHz']-(rhi-rlo)*1e3)/((rhi-rlo)*1e3):.1%}")
+        nested_mHz = (rhi - rlo) * 1e3
+        results.record("vs_nested", dict(
+            nested_mHz=nested_mHz, npe_mHz=m["reweighted_mHz"],
+            local_mHz=2 * 1.96 * _local_sigma_J(prob, ref) * 1e3,
+            floor_mHz=zi.information_floor(prob, theta_true)[0] * 1e3,
+            efficiency=m["efficiency"],
+            agreement=abs(m["reweighted_mHz"] - nested_mHz) / nested_mHz))
+
+    j = rows[0]
+    results.record("sbc", dict(
+        n_trials=n_trials, n_post=n_post,
+        J_outer=j["outer"], J_centre=j["centre"], J_verdict=j["verdict"],
+        calibrated=[r["param"] for r in rows[1:]
+                    if "calibrated" in r["verdict"]]))
+    results.record("efficiency", dict(
+        n_obs=40, min=float(q[0]), median=float(q[3]), max=float(q[6]),
+        spread=float(q[6] / max(q[0], 1e-9)),
+        below_one_percent=float(np.mean(effs < 0.01)),
+        median_width_mHz=float(np.median(widths)), floor_mHz=float(floor)))
 
     np.savez("final_check.npz", ranks=ranks, effs=effs, widths=widths)
     print("\nwrote sbc_ranks.png, sbc_ranks.npy, final_check.npz")

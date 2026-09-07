@@ -107,8 +107,6 @@ def test_ranks_are_in_range():
 def test_diagnose_refuses_to_mislabel_a_multi_spin_problem():
     """The PARAM_NAMES default is the two-spin case; a 5-parameter run must
     not be silently labelled with it."""
-    import numpy as np
-    import pytest
     ranks = np.zeros((10, 5), dtype=int)
     with pytest.raises(ValueError, match="names"):
         sc.diagnose(ranks, 99)

@@ -1,0 +1,21 @@
+{
+  "figure1": {
+    "anchor_pt": 0.578151142631,
+    "max_offset_mHz": -10.0848700845,
+    "mean_offset_mHz": -22.6289332985,
+    "min_offset_mHz": -35.4312233513,
+    "n_peaks": 34,
+    "n_strong": 13,
+    "pt_per_hz": 25.5492,
+    "scatter_mHz": 7.15148287249
+  },
+  "nested": {
+    "J_width_mHz": 2.2395019358,
+    "floor_mHz": 2.2632130652,
+    "logz": 16.9496088788,
+    "logzerr": 0.187333966841,
+    "n_samples": 13542,
+    "ratio": 0.989523244735,
+    "seconds": 23.53623626
+  }
+}

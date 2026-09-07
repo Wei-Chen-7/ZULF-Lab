@@ -34,6 +34,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 import zulf_infer as zi
+import results
 
 __all__ = ["local_fit", "curvature_errors", "multistart", "cluster_minima"]
 
@@ -370,6 +371,16 @@ def case_formic(seed=0, n_starts=200, n_sims=150_000, n_post=20000):  # pragma: 
             print(f"  break-even vs {label:<16}: never "
                   f"(the local fit is cheaper per spectrum)")
 
+    results.record("baseline_formic", dict(
+        n_starts=n_starts, frac_global=float(found.mean()),
+        J_spread_Hz=float(Js[found].max() - Js[found].min()),
+        n_minima=len(clusters),
+        J_error_mHz=float((fit["theta"][0] - theta_true[0]) * 1e3),
+        seconds_per_fit=t_local1, train_seconds=t_train,
+        npe_seconds_per_spectrum=npe_seconds,
+        breakeven_multistart=(t_train / (t_localN - npe_seconds)
+                              if t_localN > npe_seconds else None)))
+
     np.savez("local_baseline_formic.npz", theta_true=theta_true, x_obs=x_obs,
              fit_theta=fit["theta"], fit_sigma=sigma, fit_cov=cov,
              multistart_theta=np.array([f["theta"] for f in fits]),
@@ -482,6 +493,21 @@ def case_methanol(seed=0, n_starts=60, n_sims=60_000):  # pragma: no cover
     print("  posterior reports the prior back verbatim, and the shrinkage")
     print("  column labels it, instead of quoting a mean and an error bar.")
 
+    ihh = names.index("J_HH")
+    results.record("baseline_methanol", dict(
+        n_starts=len(arr),
+        J_HH_fit=float(fit["theta"][ihh]),
+        J_HH_width95_Hz=float(2 * 1.96 * sigma[ihh]),
+        J_HH_prior_Hz=float(prob.prior_span()[ihh]),
+        J_HH_spread_Hz=float(arr[:, ihh].std()),
+        J_HH_prior_sd_Hz=float(prob.prior_span()[ihh] / np.sqrt(12)),
+        J_HH_drift_Hz=float(np.mean(np.abs(arr[:, ihh] - starts[:, ihh]))),
+        J_HH_corr=float(np.corrcoef(starts[:, ihh], arr[:, ihh])[0, 1]),
+        J_CH_max_error_mHz=float(np.abs(arr[:, names.index("J_CH")]
+                                        - theta_true[0]).max() * 1e3),
+        flat_eigenvalue=float(rep["eigenvalues"][0]),
+        condition=float(rep["condition"])))
+
     np.savez("local_baseline_methanol.npz", theta_true=theta_true, x_obs=x_obs,
              fit_theta=fit["theta"], fit_sigma=sigma, hess=hess,
              multistart_theta=arr, multistart_start=starts,
@@ -566,6 +592,11 @@ def case_bimodal(seed=0, n_sims=50_000, n_post=20000):  # pragma: no cover
     print("\n  The network holds both solutions at once and says how much it")
     print("  believes each. That is the property a local fit cannot have, and")
     print("  it is the honest form of the argument for using one here.")
+
+    results.record("baseline_bimodal", dict(
+        logL_difference=float(abs(ll_a - ll_b)),
+        mass_below_90=float(lo_mode), mass_above_90=float(1 - lo_mode),
+        J_width_mHz=float((jhi - jlo) * 1e3), efficiency=float(m["efficiency"])))
 
     np.savez("local_baseline_bimodal.npz", theta_true=theta_true, x_obs=x_obs,
              samples=s, weights=w, param_names=np.array(names))

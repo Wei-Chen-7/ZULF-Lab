@@ -38,6 +38,7 @@ from __future__ import annotations
 import numpy as np
 
 import zulf_infer as zi
+import results
 
 __all__ = ["cliff_scan", "distance_to_cliff", "n_resolved"]
 
@@ -263,6 +264,14 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
     fig.tight_layout()
     fig.savefig("resolution_cliffs.png", dpi=140, facecolor="white",
                 bbox_inches="tight")
+
+    results.record("cliffs", dict(
+        n_obs=n_obs, merge_mHz=prob.merge_hz * 1e3,
+        cliff_rho=float(rho), cliff_p=float(p),
+        best_predictor=best[0][0] if best else None,
+        best_rho=float(best[0][1]) if best else None,
+        best_p_adj=float(best[0][2]) if best else None,
+        jumps={n: int(len(scans[n][0])) for n in prob.param_names}))
 
     np.savez("resolution_cliffs.npz", effs=effs, dists=dists,
              widths=widths, truths=truths,
