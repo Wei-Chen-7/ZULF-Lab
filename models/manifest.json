@@ -1,6 +1,6 @@
 {
   "formaldehyde": {
-    "efficiency": 0.07467029209998464,
+    "efficiency": 0.07645997130882208,
     "flat": [
       "J_HH"
     ],
@@ -17,21 +17,21 @@
       "B_theta_deg",
       "T2_s"
     ],
-    "seconds_per_spectrum": 5.459969615999398,
+    "seconds_per_spectrum": 6.096689065000021,
     "shrinkage": {
-      "J_CH": 0.9997724566543311,
-      "J_HH": 0.01285348160639177
+      "J_CH": 0.9997697796737939,
+      "J_HH": -0.0011612791758823793
     },
     "sigma_f": 0.001,
     "tag": "formaldehyde_60k",
     "widths_mHz": {
-      "J_CH": 1.2969970703125,
-      "J_HH": 28133.675774217834
+      "J_CH": 1.312255859375,
+      "J_HH": 28533.096456512645
     },
     "x_dim": 11
   },
   "formic_acid": {
-    "efficiency": 0.24293623795097657,
+    "efficiency": 0.24190408848033448,
     "flat": [],
     "measured": [
       "J_CH"
@@ -45,19 +45,19 @@
       "B_theta_deg",
       "T2_s"
     ],
-    "seconds_per_spectrum": 4.694197902000269,
+    "seconds_per_spectrum": 5.168838138000012,
     "shrinkage": {
-      "J_CH": 0.9996064838610197
+      "J_CH": 0.9995984529194079
     },
     "sigma_f": 0.001,
     "tag": "formic_acid_150k",
     "widths_mHz": {
-      "J_CH": 2.2430419921875
+      "J_CH": 2.288818359375
     },
     "x_dim": 9
   },
   "glycine": {
-    "efficiency": 0.06996168909814657,
+    "efficiency": 0.07127302216074706,
     "flat": [
       "J_HH"
     ],
@@ -74,21 +74,21 @@
       "B_theta_deg",
       "T2_s"
     ],
-    "seconds_per_spectrum": 5.312907950000408,
+    "seconds_per_spectrum": 6.30292286599996,
     "shrinkage": {
-      "J_CH": 0.9997724566543311,
-      "J_HH": 0.003583934338672101
+      "J_CH": 0.9997697796737939,
+      "J_HH": -0.00298484354150097
     },
     "sigma_f": 0.001,
     "tag": "glycine_60k",
     "widths_mHz": {
-      "J_CH": 1.2969970703125,
-      "J_HH": 28397.857871347846
+      "J_CH": 1.312255859375,
+      "J_HH": 28585.068040932776
     },
     "x_dim": 11
   },
   "methanol": {
-    "efficiency": 0.10055799004743719,
+    "efficiency": 0.09815099555344116,
     "flat": [
       "J_HH"
     ],
@@ -105,16 +105,16 @@
       "B_theta_deg",
       "T2_s"
     ],
-    "seconds_per_spectrum": 7.58330327800013,
+    "seconds_per_spectrum": 8.161610837000012,
     "shrinkage": {
-      "J_CH": 0.9998233192845395,
-      "J_HH": 0.0031719822417219934
+      "J_CH": 0.9998179653234649,
+      "J_HH": 0.010864304598506291
     },
     "sigma_f": 0.001,
     "tag": "methanol_60k",
     "widths_mHz": {
-      "J_CH": 1.007080078125,
-      "J_HH": 28409.598506110924
+      "J_CH": 1.03759765625,
+      "J_HH": 28190.36731894257
     },
     "x_dim": 17
   }

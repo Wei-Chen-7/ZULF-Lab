@@ -174,7 +174,12 @@ def test_longitudinal_field_does_essentially_nothing():
 
 def test_transverse_field_gives_doublet_split_by_the_sum():
     """Ref [13]: perpendicular field -> two peaks about J separated by the SUM
-    of the two Larmor frequencies, plus one line at their MEAN."""
+    of the two Larmor frequencies.
+
+    The other line sits at their MEAN, which is a LOW-frequency line near 0 Hz,
+    not a third component inside the doublet. There is no line at J at all: the
+    centre is forbidden, which is the whole point of the two tests below.
+    """
     J, B = 221.0, 1e-3
     s = xan(1, J)
     nu_sum = (GH + GC) * B

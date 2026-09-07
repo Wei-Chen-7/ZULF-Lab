@@ -16,7 +16,7 @@ L = 99
 
 
 def _diagnose_ranks(ranks):
-    return sc.diagnose(ranks.reshape(-1, 1), L)[0]
+    return sc.diagnose(ranks.reshape(-1, 1), L, names=["J_CH"])[0]
 
 
 def test_uniform_ranks_read_as_calibrated():
@@ -84,7 +84,7 @@ def test_a_posterior_that_returns_the_prior_is_calibrated():
     prob = zi.InferenceProblem(seed=0)
     post = _MockPosterior(prob, "prior", np.random.default_rng(3))
     ranks = sc.run_sbc(prob, post, n_trials=200, n_post=L, seed=1, verbose=False)
-    for row in sc.diagnose(ranks, L):
+    for row in sc.diagnose(ranks, L, names=prob.param_names):
         assert "calibrated" in row["verdict"] or row["p_ks"] > 0.005, row
 
 
@@ -92,7 +92,7 @@ def test_run_sbc_flags_a_grossly_overconfident_posterior():
     prob = zi.InferenceProblem(seed=0)
     post = _MockPosterior(prob, "tight", np.random.default_rng(4))
     ranks = sc.run_sbc(prob, post, n_trials=150, n_post=L, seed=2, verbose=False)
-    rows = sc.diagnose(ranks, L)
+    rows = sc.diagnose(ranks, L, names=prob.param_names)
     assert any("OVERCONFIDENT" in r["verdict"] for r in rows), rows
 
 
@@ -102,3 +102,15 @@ def test_ranks_are_in_range():
     ranks = sc.run_sbc(prob, post, n_trials=40, n_post=L, seed=3, verbose=False)
     assert ranks.shape == (40, 4)
     assert ranks.min() >= 0 and ranks.max() <= L
+
+
+def test_diagnose_refuses_to_mislabel_a_multi_spin_problem():
+    """The PARAM_NAMES default is the two-spin case; a 5-parameter run must
+    not be silently labelled with it."""
+    import numpy as np
+    import pytest
+    ranks = np.zeros((10, 5), dtype=int)
+    with pytest.raises(ValueError, match="names"):
+        sc.diagnose(ranks, 99)
+    rows = sc.diagnose(ranks, 99, names=["a", "b", "c", "d", "e"])
+    assert [r["param"] for r in rows] == ["a", "b", "c", "d", "e"]

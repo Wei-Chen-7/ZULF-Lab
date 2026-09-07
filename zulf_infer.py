@@ -15,8 +15,9 @@ three pieces the project needs before any network can be trained:
    band needs ~200,000 bins, and asking a flow to resolve one part in 1e6 of
    that vector is the known failure mode. Instead the observation is a short
    vector of (frequency, amplitude, width) built from the exact line list.
-   Lines closer together than a linewidth are merged first, because a real
-   spectrometer cannot separate them either.
+   Lines closer together than the instrument's resolution are merged first,
+   because a real spectrometer reports them as one peak. That resolution is a
+   fixed property of the acquisition, not of the fitted T2 -- see ``merge_hz``.
 
 3. **Amortized NPE, single round.** Sequential methods tune the proposal to one
    observation and lose amortization; a single round keeps it, at the cost of
@@ -38,7 +39,12 @@ import numpy as np
 import zulf_forward as zf
 
 __all__ = [
-    "InferenceProblem", "PARAM_NAMES", "merge_lines", "peak_summary",
+    "InferenceProblem", "PARAM_NAMES", "COUPLING_CLASSES", "SUMMARY_SHAPE",
+    "merge_lines", "peak_summary",
+    "train_npe", "train_or_load", "save_posterior", "load_posterior",
+    "evaluate", "importance_reweight", "weighted_quantile", "torch_seed",
+    "shrinkage", "efficiency_spread", "fisher_matrix", "information_floor",
+    "MODEL_DIR",
 ]
 
 #: Default parameter names (the two-spin case). A problem's own ordering is
@@ -335,6 +341,29 @@ class InferenceProblem:
 # ===========================================================================
 # Demo / first-network experiment
 # ===========================================================================
+def torch_seed(seed):
+    """Seed torch for one block, then put the global RNG back as it was.
+
+    ``posterior.sample`` draws from torch's *global* generator, so without this
+    every reported number depends on whatever ran earlier in the process: the
+    same script gives different answers on a second run, and two scripts
+    evaluating the same network at the same point disagree. Restoring the state
+    afterwards keeps the seeding from leaking into the caller.
+    """
+    import contextlib
+    import torch
+
+    @contextlib.contextmanager
+    def _ctx():
+        state = torch.random.get_rng_state()
+        torch.manual_seed(int(seed))
+        try:
+            yield
+        finally:
+            torch.random.set_rng_state(state)
+    return _ctx()
+
+
 def weighted_quantile(values, quantiles, weights):
     """Weighted quantiles of a 1-D sample.
 
@@ -477,13 +506,24 @@ def train_or_load(prob, tag, n_sims=150_000, seed=0, force=False,
     """
     import os
     import time
+    # The architecture and training schedule belong in the key too: without
+    # them, changing hidden_features and reusing the tag silently returns the
+    # old network. Files written before this key existed are accepted once and
+    # rewritten with it rather than forcing a retrain of everything cached.
     want = dict(system=prob.system, param_names=list(prob.param_names),
                 x_dim=prob.x_dim(), n_sims=int(n_sims), seed=int(seed),
-                signature=repr(sorted(prob.summary_signature().items())))
+                signature=repr(sorted(prob.summary_signature().items())),
+                arch=repr(sorted((k, str(v)) for k, v in train_kw.items())))
     path = os.path.join(model_dir, f"{tag}.pt")
     if not force and os.path.exists(path):
         posterior, meta = load_posterior(tag, model_dir)
-        if all(meta.get(k) == v for k, v in want.items()):
+        checked = {k: v for k, v in want.items() if k in meta}
+        if checked and all(meta.get(k) == v for k, v in checked.items()):
+            if "arch" not in meta:                     # migrate an older file
+                save_posterior(posterior, tag,
+                               meta=dict(meta, arch=want["arch"]),
+                               model_dir=model_dir)
+                meta = dict(meta, arch=want["arch"])
             # ``train_seconds`` is stored, so it survives into a cache hit and
             # cannot say whether this call trained anything. ``cached`` can.
             return posterior, dict(meta, cached=True)
@@ -503,9 +543,10 @@ def evaluate(prob, posterior, theta_true, n_post=20000, seed=0, label=""):
     x_obs = prob.simulate_one(theta_true)
     prob.rng = saved
 
-    s = posterior.sample((n_post,),
-                         x=torch.as_tensor(x_obs, dtype=torch.float32),
-                         show_progress_bars=False).numpy()
+    with torch_seed(seed):
+        s = posterior.sample((n_post,),
+                             x=torch.as_tensor(x_obs, dtype=torch.float32),
+                             show_progress_bars=False).numpy()
     w, eff = importance_reweight(prob, posterior, x_obs, s)
 
     lo, hi = np.percentile(s[:, 0], [2.5, 97.5])
@@ -621,17 +662,18 @@ def efficiency_spread(prob, posterior, n_obs=40, n_post=4000, seed=0):
     rng = np.random.default_rng(seed)
     saved, prob.rng = prob.rng, rng
     effs, widths, truths = [], [], []
-    for _ in range(n_obs):
-        theta = prob.sample_prior(1)[0]
-        x_obs = prob.simulate_one(theta)
-        s = posterior.sample((n_post,),
-                             x=torch.as_tensor(x_obs, dtype=torch.float32),
-                             show_progress_bars=False).numpy()
-        w, eff = importance_reweight(prob, posterior, x_obs, s)
-        lo, hi = weighted_quantile(s[:, 0], [0.025, 0.975], w)
-        effs.append(eff)
-        widths.append((hi - lo) * 1e3)
-        truths.append(theta)
+    with torch_seed(seed):
+        for _ in range(n_obs):
+            theta = prob.sample_prior(1)[0]
+            x_obs = prob.simulate_one(theta)
+            s = posterior.sample((n_post,),
+                                 x=torch.as_tensor(x_obs, dtype=torch.float32),
+                                 show_progress_bars=False).numpy()
+            w, eff = importance_reweight(prob, posterior, x_obs, s)
+            lo, hi = weighted_quantile(s[:, 0], [0.025, 0.975], w)
+            effs.append(eff)
+            widths.append((hi - lo) * 1e3)
+            truths.append(theta)
     prob.rng = saved
     return np.array(effs), np.array(widths), np.array(truths)
 

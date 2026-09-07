@@ -14,13 +14,15 @@ The simulation side of the J-coupling inference project is finished, and I am
 at the point where the only thing left needs real spectra. Could I get access
 to the group's archived ZULF data?
 
-Where things stand: the forward model reproduces ref. [1]'s benzene-¹³C₁
-multiplet to 7.2 mHz RMS from their published couplings, with nothing fitted.
-Trained networks for formic acid, formaldehyde, glycine and methanol each reach
-their information floor (1.0–2.2 mHz on ¹J_CH), agree with nested sampling on
-the exact likelihood to 1.5%, and pass simulation-based calibration. The
-comparison against a least-squares fit is done on simulated data. Four of the
-five figures I promised are made; the fifth is the answer on real data.
+Where things stand: with nothing fitted, the forward model reproduces ref. [1]'s
+published benzene-¹³C₁ multiplet from their own couplings to a scatter of
+7.2 mHz (the residual is a single uniform offset, which traces to the axis
+anchor I read off their figure, not to the physics). Trained networks for formic
+acid, formaldehyde, glycine and methanol each reach their information floor on
+¹J_CH, agree with nested sampling on the exact likelihood to about a percent,
+and pass simulation-based calibration. The comparison against a least-squares
+fit is done on simulated data. Four of the five figures I promised are made; the
+fifth is the answer on real data.
 
 **Essential**
 
@@ -37,11 +39,11 @@ five figures I promised are made; the fifth is the answer on real data.
 **Helpful, and each one removes an assumption**
 
 4. The **frequency resolution of the peak-fitting step** — how close two lines
-   can be before they are reported as one peak. This turned out to matter more
-   than it sounds: I had let that threshold depend on the fitted T₂, which made
-   the likelihood discontinuous and moved it by 5×10⁵ across a 0.1 s change in
-   T₂. It has to be an instrument constant, so I need the instrument's number
-   rather than a guess.
+   can be before they are reported as one peak. This matters more than it
+   sounds. It has to be a fixed property of the acquisition: when I let it
+   depend on the fitted T₂ instead, the likelihood became discontinuous and
+   jumped by 5×10⁵ across a 0.1 s change in T₂. So I would rather have the
+   instrument's number than a guess.
 5. **Residual field** during acquisition, magnitude and direction, if it was
    logged or measured. Otherwise it stays a nuisance parameter, which is fine —
    the priors are deliberately wide — but a measurement would tighten things.

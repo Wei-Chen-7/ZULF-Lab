@@ -35,15 +35,16 @@ def run_sbc(prob, posterior, n_trials=300, n_post=99, seed=0, verbose=True):
     rng = np.random.default_rng(seed)
     saved, prob.rng = prob.rng, rng
     ranks = np.empty((n_trials, len(prob.low)), dtype=int)
-    for i in range(n_trials):
-        theta = prob.sample_prior(1)[0]
-        x = prob.simulate_one(theta)
-        draws = posterior.sample(
-            (n_post,), x=torch.as_tensor(x, dtype=torch.float32),
-            show_progress_bars=False).numpy()
-        ranks[i] = (draws < theta[None, :]).sum(axis=0)
-        if verbose and (i + 1) % 50 == 0:
-            print(f"    {i + 1}/{n_trials}", flush=True)
+    with zi.torch_seed(seed):
+        for i in range(n_trials):
+            theta = prob.sample_prior(1)[0]
+            x = prob.simulate_one(theta)
+            draws = posterior.sample(
+                (n_post,), x=torch.as_tensor(x, dtype=torch.float32),
+                show_progress_bars=False).numpy()
+            ranks[i] = (draws < theta[None, :]).sum(axis=0)
+            if verbose and (i + 1) % 50 == 0:
+                print(f"    {i + 1}/{n_trials}", flush=True)
     prob.rng = saved
     return ranks
 
@@ -53,6 +54,11 @@ def diagnose(ranks, n_post, n_bins=20, names=None):
     out = []
     n_trials = len(ranks)
     names = list(names or zi.PARAM_NAMES)
+    if len(names) != ranks.shape[1]:
+        raise ValueError(
+            f"{ranks.shape[1]} parameters but {len(names)} names "
+            f"({names}). Pass names=prob.param_names -- the PARAM_NAMES "
+            f"default is the two-spin case and will mislabel anything else.")
     for d in range(ranks.shape[1]):
         r = ranks[:, d] / n_post                      # to [0, 1]
         # chi-square against uniform
@@ -99,6 +105,9 @@ def plot_ranks(ranks, n_post, path="sbc_ranks.png", n_bins=20, title="",
     import matplotlib.pyplot as plt
     n_trials, n_par = ranks.shape
     names = list(names or zi.PARAM_NAMES)
+    if len(names) != n_par:
+        raise ValueError(f"{n_par} parameters but {len(names)} names; "
+                         f"pass names=prob.param_names")
     fig, axes = plt.subplots(1, n_par, figsize=(3.1 * n_par, 3.0), sharey=True)
     expect = n_trials / n_bins
     band = 1.96 * np.sqrt(expect * (1 - 1 / n_bins))

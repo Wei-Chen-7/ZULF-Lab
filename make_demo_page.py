@@ -289,12 +289,60 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
   </div>
 
   <div class="col stack" style="margin-top:26px">
-    <p>Precision <em>improves</em> with spin count, which is not noise. The floor is not
+    <p>Precision <em>improves</em> across this series, which is not noise. The floor is not
     <span class="mono">&sigma;<sub>f</sub>/&radic;n</span>: XA<sub>2</sub> puts its line at
     <span class="mono">3/2&nbsp;J</span> and XA<sub>3</sub> at <span class="mono">J</span> and
     <span class="mono">2J</span>, so the lines move <em>faster</em> than J and a given peak-position
     error buys a tighter coupling. Finding that corrected a constant in the code that had only ever
     been right for two spins.</p>
+  </div>
+</section>
+
+<section>
+  <div class="head">
+    <div class="eyebrow">How it works</div>
+    <h2>Spectrum to posterior, in five steps</h2>
+  </div>
+  <div class="col stack">
+    <p class="lede">Nothing here is exotic. The choices that matter are what the network is shown
+    and what it is asked to produce.</p>
+  </div>
+  <ol class="ask">
+    <li><div><h3>Peaks, not the spectrum</h3>
+      <p>The observation is a list of line positions, amplitudes and a width. Handing a flow the raw
+      spectrum instead is the known failure mode: a 10 mHz linewidth across a 500 Hz band needs
+      ~200&#8239;000 bins, and resolving one part in 10<sup>6</sup> of that vector is not something a
+      density estimator does.</p></div></li>
+    <li><div><h3>A fixed-length summary</h3>
+      <p>A low-frequency group (Larmor precession, near 0 Hz) and the J multiplet, with multiplet
+      positions written as offsets from the prior centre &mdash; so the network sees numbers of order
+      0.1 Hz rather than 200 Hz.</p></div></li>
+    <li><div><h3>A prior that is not flat</h3>
+      <p>DFT and ML predictors already fix <sup>1</sup>J<sub>CH</sub> to about 1 Hz. That is useless
+      as a measurement and excellent as a prior, so the coupling prior is a few Hz wide rather than
+      the full band. The nuisances &mdash; residual field magnitude and angle, T<sub>2</sub> &mdash;
+      get deliberately wide priors: a network trained on a messier world than the real one transfers,
+      and one trained on a tidy world does not.</p></div></li>
+    <li><div><h3>One round of amortized NPE</h3>
+      <p>Sequential methods tune the proposal to a single observation and lose amortization. A single
+      round keeps it, at the cost of more simulations &mdash; and simulations are cheap here, 0.2 ms
+      for a four-spin line list, because one diagonalization gives exact frequencies and amplitudes
+      with no FID to build and transform.</p></div></li>
+    <li><div><h3>Reweighting against the exact likelihood</h3>
+      <p>The network&rsquo;s samples are reweighted by likelihood &times; prior / network density. This
+      is what makes the reported posterior exact rather than approximate, and it is why the widths in
+      the table above land on the information floor instead of merely near it.</p></div></li>
+  </ol>
+
+  <div class="pull">
+    <div class="big">The forward model is deterministic with additive Gaussian noise, so the
+      likelihood is available in closed form. The case for a trained network here is not
+      intractability.</div>
+    <p>It is that the network searches globally and returns <em>every</em> solution consistent with
+    the spectrum rather than the one nearest a starting guess; that having the likelihood is exactly
+    what lets its samples be reweighted into an exact answer; and that the efficiency of that
+    reweighting doubles as a misspecification detector &mdash; it is meant to collapse when the model
+    is wrong about real data, which is the check no simulation study can run on itself.</p>
   </div>
 </section>
 
@@ -366,9 +414,11 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
       <figcaption>The measured benzene-<sup>13</sup>C<sub>1</sub> multiplet, recovered exactly from the
       published PDF &mdash; the plot is vector art, so the trace is an 8515-point polyline in the content
       stream, not a screenshot. The overlay uses the paper&rsquo;s own fitted couplings and preparation;
-      nothing is fitted. <b>Of the 13 strongest peaks, the model sits 7.2 mHz RMS from the nearest
-      predicted line.</b> The residual offset is uniform (slope +0.26 &plusmn; 0.84 mHz/Hz, p = 0.76),
-      which is an axis-anchor offset, not a physics error.</figcaption>
+      nothing is fitted. All 13 strong peaks are offset the same way, by &minus;22.6 mHz, and
+      <b>the scatter about that offset is 7.2 mHz</b>. The uniformity is the point: a residual field
+      would shift lines differentially, and regressing offset against frequency gives no trend
+      (+0.26 &plusmn; 0.84 mHz/Hz, p = 0.76). It is the axis anchor, read off a left-anchored text
+      label &mdash; 0.58 pt out of 25.5 pt/Hz accounts for the whole of it.</figcaption>
     </figure>
 
     <figure>
@@ -480,10 +530,12 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
     <div class="note">
       <div class="eyebrow">Corrected</div>
       <h3>A transverse field gives a doublet, not a triplet</h3>
-      <p>The centre line is forbidden: <span class="mono">&lang;T&#8320;|M&#770;<sub>z</sub>|S&rang; = 0</span>
-      for every preparation. The splitting is by the <em>sum</em> of the Larmor frequencies, with
-      intensity <span class="mono">&prop; cos&sup2;&theta;</span> &mdash; as the cited paper&rsquo;s own
-      measurement shows.</p>
+      <p>Two lines about J, split by the <em>sum</em> of the Larmor frequencies, and nothing at J
+      itself. The centre line&rsquo;s intensity falls as
+      <span class="mono">cos&sup2;&theta;</span> and vanishes outright at 90&deg;, where
+      <span class="mono">&lang;T&#8320;|M&#770;<sub>z</sub>|S&rang; = 0</span> forbids it for every
+      preparation. The remaining line sits at the <em>mean</em> of the Larmor frequencies &mdash;
+      down near 0 Hz, not inside the doublet.</p>
     </div>
     <div class="note">
       <div class="eyebrow">New</div>

@@ -7,7 +7,7 @@ model plus simulation-based-inference stack built on top of it.
 
 ```bash
 pip install -r requirements.txt
-pytest -q                    # 168 tests, all physics claims are encoded here
+pytest -q                    # 175 tests, all physics claims are encoded here
 
 python zulf_nmr.py           # interactive teaching simulator
 python zulf_forward.py       # forward-model smoke demo
@@ -32,7 +32,7 @@ the physics is explicit).
 
 | Deliverable | State |
 |---|---|
-| Forward model, validated against published spectra | done — 7.2 mHz RMS on ref [1]'s benzene multiplet |
+| Forward model, validated against published spectra | done — 7.2 mHz scatter on ref [1]'s benzene multiplet, about a uniform anchor offset |
 | Priors, peak-list summaries, amortized NPE | done |
 | Trained networks for a few small molecules | done — `models/`, four molecules, all at their information floor |
 | Calibration (SBC), efficiency, exact-likelihood reference | done |
@@ -104,7 +104,7 @@ speed and generality.
 
 ```bash
 python zulf_forward.py          # smoke demo over the molecule presets
-pytest -q test_forward.py       # 32 validation tests
+pytest -q test_forward.py       # 35 validation tests
 ```
 
 - **Line lists, not time grids.** One diagonalization gives exact (frequency,
@@ -132,9 +132,10 @@ Every test in `test_forward.py` encodes a published fact. Line positions
 odd/even rule, and Theis Eq. (1)–(2) — giving XA → J, XA₂ → 3/2 J, XA₃ → J & 2J
 (the last two measured in refs [6] and [13]). Also encoded: the ΔI_A = 0
 selection rule that makes J_HH invisible inside an equivalent group, the global
-sign-flip and equal-γ permutation degeneracies, the transverse-field doublet
-split by the *sum* of the Larmor frequencies with a line at their *mean*
-(ref [13]), and the negative pulse-acquire weights at π/2 and π proton angles.
+sign-flip and equal-γ permutation degeneracies, the transverse-field structure
+of ref [13] — a doublet *about J* split by the **sum** of the Larmor
+frequencies, no line at J itself, and a separate low-frequency line at their
+**mean** — and the negative pulse-acquire weights at π/2 and π proton angles.
 
 ## Figure 1 — the model over a published spectrum
 
@@ -185,7 +186,7 @@ frequencies).
 
 ```bash
 python zulf_infer.py            # trains a single-round NPE on [13C]-formic acid
-pytest -q test_infer.py         # 26 tests
+pytest -q test_infer.py         # 54 tests
 ```
 
 Parameters are `(J, |B|, θ_B, T2)`. The coupling prior is a few Hz wide rather
@@ -193,7 +194,9 @@ than the full band, since DFT/ML predictors already fix ¹J_CH to ~1 Hz; the
 nuisances get deliberately wide priors. The observation is a fixed-length
 (frequency, amplitude, width) summary — a low-frequency Larmor group and a
 high-frequency J multiplet, with multiplet positions as offsets from the prior
-centre. Lines closer than a linewidth are merged, as a real spectrometer would.
+centre. Lines closer than the instrument's resolution are merged, as a real
+spectrometer would report them — at a fixed acquisition resolution, never at the
+fitted T₂ (see the resolution-cliff section below for why that distinction bit).
 
 Because the forward model is deterministic with additive Gaussian noise, the
 likelihood is available in closed form, so NPE samples can be reweighted into an

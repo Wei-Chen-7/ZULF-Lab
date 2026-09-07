@@ -402,3 +402,89 @@ def test_floor_scales_linearly_with_the_noise():
     a = zi.information_floor(prob_a, theta)[0]
     b = zi.information_floor(prob_b, theta)[0]
     assert b / a == pytest.approx(2.0, rel=0.02)
+
+
+# -- reproducibility ---------------------------------------------------------
+def test_torch_seed_restores_the_global_state():
+    """Seeding for one block must not leak into whatever runs next."""
+    import torch
+    torch.manual_seed(1234)
+    before = torch.randn(3)
+    torch.manual_seed(1234)
+    with zi.torch_seed(99):
+        torch.randn(5)
+    after = torch.randn(3)
+    assert torch.allclose(before, after)
+
+
+def test_torch_seed_makes_the_block_deterministic():
+    import torch
+    with zi.torch_seed(7):
+        a = torch.randn(4)
+    with zi.torch_seed(7):
+        b = torch.randn(4)
+    assert torch.allclose(a, b)
+
+
+def test_evaluate_is_reproducible_within_a_process(tmp_path):
+    """posterior.sample draws from torch's GLOBAL rng.
+
+    Without seeding it, evaluate() returns different numbers on every call, so
+    two scripts reporting the same network at the same point disagree -- which
+    is how the same flat direction came back as 0.010, 0.003 and -0.002.
+    """
+    prob = zi.InferenceProblem(seed=0)
+    post, _ = zi.train_or_load(prob, tag="rep", n_sims=400, seed=0,
+                               model_dir=str(tmp_path), max_num_epochs=2,
+                               training_batch_size=100)
+    theta = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+    a = zi.evaluate(prob, post, theta, seed=0, n_post=400)
+    b = zi.evaluate(prob, post, theta, seed=0, n_post=400)
+    assert np.array_equal(a["samples"], b["samples"])
+    assert a["efficiency"] == b["efficiency"]
+    assert a["reweighted_mHz"] == b["reweighted_mHz"]
+
+
+def test_evaluate_seed_actually_changes_the_draws(tmp_path):
+    prob = zi.InferenceProblem(seed=0)
+    post, _ = zi.train_or_load(prob, tag="rep2", n_sims=400, seed=0,
+                               model_dir=str(tmp_path), max_num_epochs=2,
+                               training_batch_size=100)
+    theta = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+    a = zi.evaluate(prob, post, theta, seed=0, n_post=400)
+    b = zi.evaluate(prob, post, theta, seed=1, n_post=400)
+    assert not np.array_equal(a["samples"], b["samples"])
+
+
+def test_arch_is_part_of_the_cache_key(tmp_path):
+    """Changing the flow's width must not silently return the old network."""
+    prob = zi.InferenceProblem(seed=0)
+    _, a = zi.train_or_load(prob, tag="arch", n_sims=400, seed=0,
+                            model_dir=str(tmp_path), max_num_epochs=2,
+                            training_batch_size=100)
+    assert a["cached"] is False
+    _, b = zi.train_or_load(prob, tag="arch", n_sims=400, seed=0,
+                            model_dir=str(tmp_path), max_num_epochs=2,
+                            training_batch_size=100)
+    assert b["cached"] is True
+    _, c = zi.train_or_load(prob, tag="arch", n_sims=400, seed=0,
+                            model_dir=str(tmp_path), max_num_epochs=2,
+                            training_batch_size=100, hidden_features=24)
+    assert c["cached"] is False                # different flow, retrained
+
+
+def test_a_file_without_an_arch_key_is_migrated_not_retrained(tmp_path):
+    """Networks cached before the arch key existed stay usable."""
+    prob = zi.InferenceProblem(seed=0)
+    post, meta = zi.train_or_load(prob, tag="old", n_sims=400, seed=0,
+                                  model_dir=str(tmp_path), max_num_epochs=2,
+                                  training_batch_size=100)
+    stripped = {k: v for k, v in meta.items() if k not in ("arch", "cached")}
+    zi.save_posterior(post, "old", meta=stripped, model_dir=str(tmp_path))
+
+    _, hit = zi.train_or_load(prob, tag="old", n_sims=400, seed=0,
+                              model_dir=str(tmp_path), max_num_epochs=2,
+                              training_batch_size=100)
+    assert hit["cached"] is True               # accepted, not retrained
+    _, meta2 = zi.load_posterior("old", model_dir=str(tmp_path))
+    assert "arch" in meta2                     # and rewritten with the key

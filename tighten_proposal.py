@@ -26,11 +26,12 @@ import zulf_infer as zi
 # Capped at 150 epochs so the sweep stays bounded; the baseline converged in
 # 123 epochs, so this is not a binding constraint for it.
 CONFIGS = [
-    dict(label="baseline: 50k, nsf default",
+    dict(label="baseline: 50k, nsf default", tag="formic_acid_50k",
          n_sims=50_000, density_estimator="nsf", max_num_epochs=150),
-    dict(label="150k sims, nsf default",
+    dict(label="150k sims, nsf default", tag="formic_acid_150k",
          n_sims=150_000, density_estimator="nsf", max_num_epochs=150),
     dict(label="150k sims, nsf wide (96 feat, 8 transforms)",
+         tag="formic_acid_150k_wide",
          n_sims=150_000, density_estimator="nsf",
          hidden_features=96, num_transforms=8, max_num_epochs=150),
 ]
@@ -41,13 +42,16 @@ def main():
     theta_true = None
     rows = []
     for cfg in CONFIGS:
-        label = cfg.pop("label")
+        cfg = dict(cfg)
+        label, tag = cfg.pop("label"), cfg.pop("tag")
         prob = zi.InferenceProblem(seed=seed)
         if theta_true is None:
             theta_true = np.array([prob.J_center + 0.7, 1.0, 55.0, 12.0])
+        # Cached like every other network here, so the shared 150k baseline is
+        # not retrained for this sweep and a re-run costs nothing.
         t0 = time.perf_counter()
-        posterior, _, _ = zi.train_npe(prob, seed=seed, verbose=False, **cfg)
-        train_s = time.perf_counter() - t0
+        posterior, meta = zi.train_or_load(prob, tag=tag, seed=seed, **cfg)
+        train_s = meta.get("train_seconds", time.perf_counter() - t0)
         m = zi.evaluate(prob, posterior, theta_true, seed=seed, label=label)
         m["train_s"] = train_s
         rows.append(m)

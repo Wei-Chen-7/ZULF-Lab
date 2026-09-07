@@ -151,20 +151,21 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
     rng = np.random.default_rng(seed)
     saved, prob.rng = prob.rng, rng
     effs, dists, widths, truths = [], [], [], []
-    for k in range(n_obs):
-        t = prob.sample_prior(1)[0]
-        x_obs = prob.simulate_one(t)
-        s = posterior.sample((n_post,),
-                             x=torch.as_tensor(x_obs, dtype=torch.float32),
-                             show_progress_bars=False).numpy()
-        w, eff = zi.importance_reweight(prob, posterior, x_obs, s)
-        lo, hi = zi.weighted_quantile(s[:, 0], [0.025, 0.975], w)
-        effs.append(eff)
-        widths.append((hi - lo) * 1e3)
-        dists.append(distance_to_cliff(prob, t, n=300))
-        truths.append(t)
-        if (k + 1) % 20 == 0:
-            print(f"    {k + 1}/{n_obs}", flush=True)
+    with zi.torch_seed(seed):
+        for k in range(n_obs):
+            t = prob.sample_prior(1)[0]
+            x_obs = prob.simulate_one(t)
+            s = posterior.sample((n_post,),
+                                 x=torch.as_tensor(x_obs, dtype=torch.float32),
+                                 show_progress_bars=False).numpy()
+            w, eff = zi.importance_reweight(prob, posterior, x_obs, s)
+            lo, hi = zi.weighted_quantile(s[:, 0], [0.025, 0.975], w)
+            effs.append(eff)
+            widths.append((hi - lo) * 1e3)
+            dists.append(distance_to_cliff(prob, t, n=300))
+            truths.append(t)
+            if (k + 1) % 20 == 0:
+                print(f"    {k + 1}/{n_obs}", flush=True)
     prob.rng = saved
     effs, dists, widths = np.array(effs), np.array(dists), np.array(widths)
     truths = np.array(truths)
