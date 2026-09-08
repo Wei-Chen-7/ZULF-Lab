@@ -75,7 +75,7 @@ def panel_a(ax, seed=SEED):
                                     max_num_epochs=150)
     m = zi.evaluate(prob, posterior, theta_true, seed=seed, n_post=20000)
     fit = lb.local_fit(prob, x_obs, 0.5 * (prob.low + prob.high))
-    sigma, _, _, _ = lb.curvature_errors(prob, x_obs, fit["theta"])
+    sigma, _, hess, _ = lb.curvature_errors(prob, x_obs, fit["theta"])
 
     j0 = theta_true[0]
     grid = np.linspace(-4.0, 4.0, 800)                    # mHz from the truth
@@ -102,22 +102,31 @@ def panel_a(ax, seed=SEED):
     wp = w95(m["samples"][:, 0], m["weights"])
     wl = 2 * 1.96 * sigma[0] * 1e3
     floor = zi.information_floor(prob, theta_true)[0] * 1e3
+
+    # The curvature bar and the Cramer-Rao floor are not two results. For a
+    # Gaussian likelihood the observed information at the optimum IS the
+    # expected information, so listing them as separate lines would imply
+    # corroboration that is not there. Measure the gap and say so.
+    fisher, _ = zi.fisher_matrix(prob, fit["theta"])
+    rel = float(np.abs(hess - fisher).max() / np.abs(fisher).max())
+
     ax.text(0.02, 0.97,
             f"95% width on $J_{{\\rm CH}}$\n"
-            f"  nested      {wn:5.2f} mHz\n"
-            f"  NPE         {wp:5.2f} mHz\n"
-            f"  local       {wl:5.2f} mHz\n"
-            f"  floor       {floor:5.2f} mHz",
-            transform=ax.transAxes, va="top", ha="left", fontsize=7.6,
+            f"  nested sampling  {wn:5.2f} mHz\n"
+            f"  NPE, reweighted  {wp:5.2f} mHz\n"
+            f"  " + "\u2500" * 21 + "\n"
+            f"  Cramer-Rao bound {floor:5.2f} mHz\n"
+            f"  = local curvature, to {rel:.0e}",
+            transform=ax.transAxes, va="top", ha="left", fontsize=7.4,
             family="monospace",
             bbox=dict(fc="white", ec="#adb5bd", alpha=0.9, pad=4))
     ax.set_xlabel(r"$J_{\rm CH}$ $-$ truth  [mHz]", fontsize=9)
     ax.set_ylabel("posterior density (scaled)", fontsize=9)
-    ax.set_title("(a) On a clean problem all three agree", fontsize=9.5,
-                 fontweight="bold")
+    ax.set_title("(a) All three agree \u2014 but only two\nof them are independent",
+                 fontsize=9.5, fontweight="bold")
     ax.legend(fontsize=7.5, loc="center right", framealpha=0.9)
     ax.tick_params(labelsize=8)
-    return dict(nested=wn, npe=wp, local=wl, floor=floor)
+    return dict(nested=wn, npe=wp, local=wl, floor=floor, curv_vs_fisher=rel)
 
 
 def panel_b(ax, seed=SEED, n_starts=60):
@@ -260,7 +269,8 @@ def main():  # pragma: no cover - figure
     fig.savefig(OUT, dpi=150, facecolor="white", bbox_inches="tight")
 
     print(f"\n  (a) nested {a['nested']:.2f} / NPE {a['npe']:.2f} / "
-          f"local {a['local']:.2f} mHz, floor {a['floor']:.2f}")
+          f"local {a['local']:.2f} mHz, floor {a['floor']:.2f}"
+          f"  (curvature vs Fisher: {a['curv_vs_fisher']:.1e})")
     print(f"  (b) corr(start, fit): J_HH {b['r_hh']:+.3f}, "
           f"J_CH {b['r_ch']:+.3f}; mean J_HH drift {b['drift']:.1f} Hz")
     print(f"  (c) posterior mass below 90 deg: {c['mass_below']:.1%}")
