@@ -75,9 +75,18 @@ couplings a spectrum can and cannot constrain, instead of giving a number for
 all of them. In a methyl or methylene group the proton–proton coupling inside
 the equivalent group moves no line at all, so it comes back as its prior and is
 labelled unmeasured. A least-squares fit on the same data returns an arbitrary
-value there with an error bar attached — that is the specific failure this is
-meant to avoid, and it is worth knowing before anyone reads a J_HH off one of
-our outputs.
+value there with an error bar attached — worth knowing before anyone reads a
+J_HH off one of our outputs.
+
+I have also now read the five closest papers properly, which narrowed what I
+should be claiming. Cobas (Mestrelab) does the analytic version of this for
+AA′BB′ systems — he identifies which combinations are extractable and resolves
+the rest by an ordering convention — and his ABC/ABCD network already needs no
+starting guess. So neither of those is ours. What is left, and what the
+measurements support, is a calibrated posterior from a single spectrum in a
+regime where the standard fix for the labelling degeneracy does not exist:
+everyone else orders the nuclei by chemical shift, and at zero field there
+isn't one. I would rather find that out now than at referee stage.
 
 Happy to do the digging myself if you can point me at where the archive lives
 and who to ask about the acquisition details — I do not want to make this your

@@ -186,6 +186,7 @@
   },
   "vs_nested": {
     "agreement": 0.0220211569288,
+    "curvature_vs_fisher_rel": 1.13886593349e-06,
     "efficiency": 0.241904088487,
     "floor_mHz": 2.2632130652,
     "local_mHz": 2.26321323434,

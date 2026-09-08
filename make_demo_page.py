@@ -270,10 +270,10 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
 <header>
   <div class="eyebrow">Simulation-based inference &middot; zero- to ultralow-field NMR</div>
   <h1>Reading J&#8209;couplings out of a zero&#8209;field spectrum</h1>
-  <p class="sub">A trained network that returns a posterior over scalar couplings with no starting guess &mdash; and states which couplings the spectrum cannot constrain instead of quoting a number for them.</p>
+  <p class="sub">A calibrated posterior over scalar couplings from a single spectrum &mdash; every value consistent with the data, and an explicit statement of which couplings the spectrum cannot constrain at all.</p>
   <p class="byline">Wei Chen &middot; Wabash College / Helmholtz&#8209;Institut Mainz &middot; status as of the last simulation run</p>
   <div class="chips">
-    <span class="chip on">Forward model validated &middot; 7.2 mHz RMS</span>
+    <span class="chip on">Forward model validated &middot; 7.2 mHz scatter</span>
     <span class="chip on">4 trained networks, all at their information floor</span>
     <span class="chip on">Calibrated (SBC) &middot; exact-likelihood reference</span>
     <span class="chip on">203 tests</span>
@@ -367,11 +367,15 @@ __LIBROWS__
     <div class="big">The forward model is deterministic with additive Gaussian noise, so the
       likelihood is available in closed form. The case for a trained network here is not
       intractability.</div>
-    <p>It is that the network searches globally and returns <em>every</em> solution consistent with
-    the spectrum rather than the one nearest a starting guess; that having the likelihood is exactly
-    what lets its samples be reweighted into an exact answer; and that the efficiency of that
-    reweighting doubles as a misspecification detector &mdash; it is meant to collapse when the model
-    is wrong about real data, which is the check no simulation study can run on itself.</p>
+    <p>It is that the answer is a <em>distribution</em>: every setting consistent with the spectrum,
+    with a weight on each, rather than one number per coupling. Having the likelihood in closed form
+    is what lets the network&rsquo;s samples be reweighted into an exact posterior; and the efficiency
+    of that reweighting doubles as a misspecification detector, meant to collapse when the model is
+    wrong about real data &mdash; the one check no simulation study can run on itself.</p>
+    <p style="font-size:.92rem;color:var(--ink-2)">Searching globally with no starting guess is
+    <em>not</em> the distinguishing feature: the neural state of the art for high-field spectra
+    already does that (see below). Returning a calibrated posterior, and naming the directions the
+    data cannot see, is.</p>
   </div>
 </section>
 
@@ -488,7 +492,12 @@ __LIBROWS__
       <figcaption>Three panels because the comparison has three answers, and showing only the flattering
       one would be dishonest. <b>(a)</b> On formic acid all three agree to about 2% &mdash; nested
       sampling 2.24 mHz, network 2.29, local curvature 2.26 &mdash; and 200 of 200 random starts find
-      the same minimum, agreeing on J to 2&times;10<sup>&minus;7</sup> Hz, so the
+      the same minimum, agreeing on J to 2&times;10<sup>&minus;7</sup> Hz. Note that the local
+      curvature bar and the information floor are <em>not</em> independent: for a Gaussian likelihood
+      the observed information at the optimum is the expected information, and the two agree here to
+      one part in 10<sup>6</sup>. The real content is that two fully Bayesian methods land within 2%
+      of the asymptotic bound &mdash; which says the posterior is Gaussian to that accuracy, and is
+      exactly why the local fit ties on this problem and fails on the next two. So the
       local fit is not the weak link here. <b>(b)</b> On methanol the fit returns an arbitrary number for
       the flat direction. <b>(c)</b> &theta;<sub>B</sub> and 180&deg;&minus;&theta;<sub>B</sub> give
       log-likelihoods identical to 5&times;10<sup>&minus;13</sup>; the network holds both modes at
@@ -507,6 +516,61 @@ __LIBROWS__
       </div>
     </figure>
 
+  </div>
+</section>
+
+<section>
+  <div class="head">
+    <div class="eyebrow">Where this sits in the literature</div>
+    <h2>What the closest existing work does, read in full</h2>
+  </div>
+  <div class="col stack">
+    <p class="lede">Five neighbouring papers, read rather than skimmed. None of them returns a
+    posterior over parameters given one spectrum. Two of them do identify unmeasurable coupling
+    combinations &mdash; and then remove the ambiguity by convention, which is the practice this
+    project proposes to replace.</p>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <div class="eyebrow">Closest prior art</div>
+      <h3>Cobas, <span style="font-style:italic">Artif. Intell. Chem.</span> 4, 100127 (2026)</h3>
+      <p>Neural stage plus quantum-mechanical refinement for ABC/ABCD systems, sub-0.1 Hz, no
+      starting guess. It does not report degeneracy &mdash; it removes it: exact degeneracies are
+      <em>excluded from the training data</em>, and the labelling is fixed by ranking sites
+      &ldquo;by descending chemical-shift frequency&rdquo;. No uncertainty of any kind.</p>
+      <p class="mono">That ordering key is the point. The standard fix for the labelling
+      degeneracy is the chemical shift, and zero field has none.</p>
+    </div>
+    <div class="note">
+      <div class="eyebrow">Nearest on our own claim</div>
+      <h3>Cobas, <span style="font-style:italic">J. Magn. Reson.</span> 387, 108061 (2026)</h3>
+      <p>States outright that in para-disubstituted benzenes two couplings are &ldquo;inherently
+      ambiguous from the one-dimensional proton spectrum alone&rdquo; and that only composite
+      parameters are &ldquo;reliably extractable&rdquo; &mdash; then resolves the residue with an
+      explicit ordering convention.</p>
+      <p>So identifying unmeasurable couplings is <em>not</em> new. Reporting them as a posterior,
+      rather than breaking the tie by hand, is what remains.</p>
+    </div>
+    <div class="note">
+      <div class="eyebrow">Uncertainty, but a different kind</div>
+      <h3>2D-JCOG and MolDeTr (2026)</h3>
+      <p>Both report uncertainty as spread across five independently trained networks. 2D-JCOG&rsquo;s
+      own figure is the argument against reading that as a posterior: its &ldquo;median standard
+      deviation across the five models is effectively zero&rdquo;. Ensemble spread measures training
+      stochasticity. A perfectly flat direction would give five identical, confident answers.</p>
+      <p>Both also dispose of couplings between equivalent nuclei by <em>excluding</em> them &mdash;
+      curated out, or grouped away to shrink the parameter space.</p>
+    </div>
+  </div>
+
+  <div class="pull">
+    <div class="big">The claim that survives is narrower than &ldquo;a network reads the spectrum&rdquo;,
+      and it is the one the measurements support.</div>
+    <p>Simulation-based inference applied to ZULF NMR, producing a calibrated posterior from a
+    single spectrum, in a regime where the standard remedy for the labelling degeneracy does not
+    exist. Flat directions are fitted and reported as shrinkage rather than excluded by curation or
+    resolved by convention.</p>
   </div>
 </section>
 

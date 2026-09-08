@@ -359,6 +359,17 @@ Earlier, at 1.7% efficiency, the same comparison agreed only to 4%. At ESS ≈ 3
 the reweighted quantiles carry ~5% Monte Carlo error, so **low efficiency
 degrades the accuracy of the reweighted estimate, not just its speed.**
 
+> **Two of those rows are the same quantity.** For a Gaussian likelihood the
+> observed information at the optimum *is* the expected information, so the
+> local fit's curvature bar and the Cramér–Rao floor are one computation reached
+> two ways — they agree here to one part in 10⁶, and quoting them as separate
+> lines would imply corroboration that is not there. The real content of the
+> table is that two *fully Bayesian* methods, neither of which assumes a
+> Gaussian posterior, land within 2% of the asymptotic bound. That says the
+> posterior is Gaussian to that accuracy on this problem — which is precisely
+> why the local fit ties here, and predicts where it will fail: wherever the
+> posterior is *not* Gaussian, which is cases (b) and (c) below.
+
 ### Figure 2 — the posterior and its spread
 
 ```bash

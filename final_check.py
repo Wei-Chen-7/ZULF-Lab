@@ -34,11 +34,22 @@ SEED = 0
 
 
 def _local_sigma_J(prob, ref):
-    """The least-squares baseline's own error bar on J, same observation."""
+    """The least-squares baseline's own error bar on J, and how independent it is.
+
+    Returns ``(sigma_J, rel_diff)``. The second number matters for how the
+    comparison is presented: for a Gaussian likelihood the observed information
+    at the optimum IS the expected information, so the curvature error bar and
+    the Cramer-Rao floor are the same quantity reached two ways, not two
+    independent estimates. Quoting them as separate rows implies corroboration
+    that is not there, so the size of the gap is worth recording.
+    """
     import local_baseline as lb
+    import numpy as np
     fit = lb.local_fit(prob, ref["x_obs"], 0.5 * (prob.low + prob.high))
-    sigma, _, _, _ = lb.curvature_errors(prob, ref["x_obs"], fit["theta"])
-    return float(sigma[0])
+    sigma, _, hess, _ = lb.curvature_errors(prob, ref["x_obs"], fit["theta"])
+    fisher, _ = zi.fisher_matrix(prob, fit["theta"])
+    rel = float(np.abs(hess - fisher).max() / np.abs(fisher).max())
+    return float(sigma[0]), rel
 
 
 def main():
@@ -110,9 +121,11 @@ def main():
               f"(efficiency {m['efficiency']:.1%})")
         print(f"  agreement       : {abs(m['reweighted_mHz']-(rhi-rlo)*1e3)/((rhi-rlo)*1e3):.1%}")
         nested_mHz = (rhi - rlo) * 1e3
+        sigma_J, curv_vs_fisher = _local_sigma_J(prob, ref)
         results.record("vs_nested", dict(
             nested_mHz=nested_mHz, npe_mHz=m["reweighted_mHz"],
-            local_mHz=2 * 1.96 * _local_sigma_J(prob, ref) * 1e3,
+            local_mHz=2 * 1.96 * sigma_J * 1e3,
+            curvature_vs_fisher_rel=curv_vs_fisher,
             floor_mHz=zi.information_floor(prob, theta_true)[0] * 1e3,
             efficiency=m["efficiency"],
             agreement=abs(m["reweighted_mHz"] - nested_mHz) / nested_mHz))
