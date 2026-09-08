@@ -1,4 +1,60 @@
 {
+  "baseline_bimodal": {
+    "J_width_mHz": 2.27355957031,
+    "efficiency": 0.144484200482,
+    "logL_difference": 5.18696197105e-13,
+    "mass_above_ninety_deg": 0.490891360843,
+    "mass_below_ninety_deg": 0.509108639157
+  },
+  "baseline_formic": {
+    "J_error_mHz": 0.0698418492391,
+    "J_spread_Hz": 2.02193831456e-07,
+    "breakeven_multistart": 6.8339425304,
+    "frac_global": 1.0,
+    "n_minima": 1,
+    "n_starts": 200,
+    "npe_seconds_per_spectrum": 6.120697318,
+    "seconds_per_fit": 1.886945053,
+    "train_seconds": 2537.22631633
+  },
+  "baseline_methanol": {
+    "J_CH_max_error_mHz": 0.0611169844831,
+    "J_HH_corr": 0.422866074985,
+    "J_HH_drift_Hz": 8.8584595998,
+    "J_HH_fit": -3.5415902452,
+    "J_HH_prior_Hz": 30.0,
+    "J_HH_prior_sd_Hz": 8.66025403784,
+    "J_HH_spread_Hz": 10.985175137,
+    "J_HH_width95_Hz": 1788122.18585,
+    "condition": 1.24776749302e+17,
+    "flat_eigenvalue": 4.32773196356e-09,
+    "n_starts": 60
+  },
+  "cliffs": {
+    "best_p_adj": 0.00868993485204,
+    "best_predictor": "J_CH",
+    "best_rho": -0.407224228952,
+    "cliff_p": 0.0579796150317,
+    "cliff_rho": 0.246150984852,
+    "jumps": {
+      "B_nT": 2,
+      "B_theta_deg": 2,
+      "J_CH": 0,
+      "T2_s": 0
+    },
+    "merge_mHz": 14.8051109853,
+    "n_obs": 60
+  },
+  "efficiency": {
+    "below_one_percent": 0.0,
+    "floor_mHz": 2.2632130652,
+    "max": 0.45531619136,
+    "median": 0.260266928801,
+    "median_width_mHz": 2.27355957031,
+    "min": 0.0146339457816,
+    "n_obs": 40,
+    "spread": 31.1136994872
+  },
   "figure1": {
     "anchor_pt": 0.578151142631,
     "max_offset_mHz": -10.0848700845,
@@ -9,6 +65,77 @@
     "pt_per_hz": 25.5492,
     "scatter_mHz": 7.15148287249
   },
+  "library": {
+    "formaldehyde": {
+      "efficiency": 0.0764599713088,
+      "flat": [
+        "J_HH"
+      ],
+      "floor_mHz": 1.30666668281,
+      "label": "formaldehyde",
+      "measured": [
+        "J_CH"
+      ],
+      "n_spins": 3,
+      "ratio": 1.00427743099,
+      "shrinkage": {
+        "J_CH": 0.999769779674,
+        "J_HH": -0.00116127917588
+      },
+      "width_mHz": 1.31225585938
+    },
+    "formic_acid": {
+      "efficiency": 0.24190408848,
+      "flat": [],
+      "floor_mHz": 2.26321306518,
+      "label": "formic acid",
+      "measured": [
+        "J_CH"
+      ],
+      "n_spins": 2,
+      "ratio": 1.0113136914,
+      "shrinkage": {
+        "J_CH": 0.999598452919
+      },
+      "width_mHz": 2.28881835938
+    },
+    "glycine": {
+      "efficiency": 0.0712730221607,
+      "flat": [
+        "J_HH"
+      ],
+      "floor_mHz": 1.30666668511,
+      "label": "glycine",
+      "measured": [
+        "J_CH"
+      ],
+      "n_spins": 3,
+      "ratio": 1.00427742923,
+      "shrinkage": {
+        "J_CH": 0.999769779674,
+        "J_HH": -0.0029848435415
+      },
+      "width_mHz": 1.31225585938
+    },
+    "methanol": {
+      "efficiency": 0.0981509955534,
+      "flat": [
+        "J_HH"
+      ],
+      "floor_mHz": 1.01213965596,
+      "label": "methanol",
+      "measured": [
+        "J_CH"
+      ],
+      "n_spins": 4,
+      "ratio": 1.0251526557,
+      "shrinkage": {
+        "J_CH": 0.999817965323,
+        "J_HH": 0.0108643045985
+      },
+      "width_mHz": 1.03759765625
+    }
+  },
   "nested": {
     "J_width_mHz": 2.2395019358,
     "floor_mHz": 2.2632130652,
@@ -17,5 +144,52 @@
     "n_samples": 13542,
     "ratio": 0.989523244735,
     "seconds": 23.53623626
+  },
+  "sbc": {
+    "J_centre": 0.276666666667,
+    "J_outer": 0.0566666666667,
+    "J_verdict": "edges depleted -> conservative (posterior too wide)",
+    "calibrated": [
+      "B_nT",
+      "B_theta_deg",
+      "T2_s"
+    ],
+    "n_post": 99,
+    "n_trials": 300
+  },
+  "tighten": {
+    "baseline_efficiency": 0.234136384898,
+    "best_efficiency": 0.373682899403,
+    "configs": [
+      {
+        "efficiency": 0.234136384898,
+        "label": "baseline: 50k, nsf default",
+        "raw_mHz": 9.58251953125,
+        "raw_over_floor": 4.2340333213,
+        "reweighted_mHz": 2.27355957031
+      },
+      {
+        "efficiency": 0.241904088487,
+        "label": "150k sims, nsf default",
+        "raw_mHz": 5.37109375,
+        "raw_over_floor": 2.37321612913,
+        "reweighted_mHz": 2.28881835938
+      },
+      {
+        "efficiency": 0.373682899403,
+        "label": "150k sims, nsf wide (96 feat, 8 transforms)",
+        "raw_mHz": 4.94384765625,
+        "raw_over_floor": 2.18443757341,
+        "reweighted_mHz": 2.24304199219
+      }
+    ]
+  },
+  "vs_nested": {
+    "agreement": 0.0220211569288,
+    "efficiency": 0.241904088487,
+    "floor_mHz": 2.2632130652,
+    "local_mHz": 2.26321323434,
+    "nested_mHz": 2.2395019358,
+    "npe_mHz": 2.28881835938
   }
 }

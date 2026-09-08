@@ -595,7 +595,8 @@ def case_bimodal(seed=0, n_sims=50_000, n_post=20000):  # pragma: no cover
 
     results.record("baseline_bimodal", dict(
         logL_difference=float(abs(ll_a - ll_b)),
-        mass_below_90=float(lo_mode), mass_above_90=float(1 - lo_mode),
+        mass_below_ninety_deg=float(lo_mode),
+        mass_above_ninety_deg=float(1 - lo_mode),
         J_width_mHz=float((jhi - jlo) * 1e3), efficiency=float(m["efficiency"])))
 
     np.savez("local_baseline_bimodal.npz", theta_true=theta_true, x_obs=x_obs,

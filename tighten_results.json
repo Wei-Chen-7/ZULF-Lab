@@ -17,7 +17,7 @@
     "floor_mHz": 2.2632130652002074,
     "prior_mHz": 6000.0,
     "raw_over_floor": 2.3732161291340303,
-    "train_s": 2094.8332902720003
+    "train_s": 2610.7361232849994
   },
   {
     "label": "150k sims, nsf wide (96 feat, 8 transforms)",

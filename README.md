@@ -7,7 +7,7 @@ model plus simulation-based-inference stack built on top of it.
 
 ```bash
 pip install -r requirements.txt
-pytest -q                    # 175 tests, all physics claims are encoded here
+pytest -q                    # 203 tests, all physics claims are encoded here
 
 python zulf_nmr.py           # interactive teaching simulator
 python zulf_forward.py       # forward-model smoke demo
@@ -284,9 +284,9 @@ correct lineshape, flat baseline.)
 <!-- BEGIN generated: tighten -- edit results.py, not this block -->
 | configuration | raw width | raw/floor | reweighted | efficiency |
 |---|---|---|---|---|
-| 50k sims, nsf default | 9.58 mHz | 4.23× | 2.27 mHz | 23.4% |
+| baseline: 50k, nsf default | 9.58 mHz | 4.23× | 2.27 mHz | 23.4% |
 | 150k sims, nsf default | 5.37 mHz | 2.37× | 2.29 mHz | 24.2% |
-| **150k sims, nsf wide** (96 features, 8 transforms) | **4.94 mHz** | **2.18×** | 2.24 mHz | **37.4%** |
+| 150k sims, nsf wide (96 feat, 8 transforms) | 4.94 mHz | 2.18× | 2.24 mHz | 37.4% |
 <!-- END generated: tighten -->
 
 Tripling the simulations nearly halves the raw proposal width but barely moves

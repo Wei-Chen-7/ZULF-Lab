@@ -17,7 +17,7 @@
       "B_theta_deg",
       "T2_s"
     ],
-    "seconds_per_spectrum": 6.096689065000021,
+    "seconds_per_spectrum": 6.970399773999816,
     "shrinkage": {
       "J_CH": 0.9997697796737939,
       "J_HH": -0.0011612791758823793
@@ -45,7 +45,7 @@
       "B_theta_deg",
       "T2_s"
     ],
-    "seconds_per_spectrum": 5.168838138000012,
+    "seconds_per_spectrum": 5.573055462999946,
     "shrinkage": {
       "J_CH": 0.9995984529194079
     },
@@ -74,7 +74,7 @@
       "B_theta_deg",
       "T2_s"
     ],
-    "seconds_per_spectrum": 6.30292286599996,
+    "seconds_per_spectrum": 6.673859757999708,
     "shrinkage": {
       "J_CH": 0.9997697796737939,
       "J_HH": -0.00298484354150097
@@ -105,7 +105,7 @@
       "B_theta_deg",
       "T2_s"
     ],
-    "seconds_per_spectrum": 8.161610837000012,
+    "seconds_per_spectrum": 9.67028290099961,
     "shrinkage": {
       "J_CH": 0.9998179653234649,
       "J_HH": 0.010864304598506291

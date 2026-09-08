@@ -276,7 +276,7 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
     <span class="chip on">Forward model validated &middot; 7.2 mHz RMS</span>
     <span class="chip on">4 trained networks, all at their information floor</span>
     <span class="chip on">Calibrated (SBC) &middot; exact-likelihood reference</span>
-    <span class="chip on">175 tests</span>
+    <span class="chip on">203 tests</span>
     <span class="chip off">Figure 5 &mdash; needs archived spectra</span>
   </div>
 </header>
@@ -624,7 +624,7 @@ __LIBROWS__
 </section>
 
 <footer>
-  Reproducible from the repository: <span class="mono">pytest -q</span> &rarr; 175 passing &middot;
+  Reproducible from the repository: <span class="mono">pytest -q</span> &rarr; 203 passing &middot;
   <span class="mono">python train_library.py</span> trains and caches the four networks &middot;
   <span class="mono">python local_baseline.py</span> runs the three-case comparison &middot;
   figures from <span class="mono">make_figure1.py</span>, <span class="mono">make_figure2.py</span>,

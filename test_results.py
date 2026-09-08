@@ -168,3 +168,62 @@ def test_the_committed_readme_is_not_stale():
         pytest.skip("markers not installed yet")
     assert results.render_readme(data) == current, (
         "README generated blocks are stale -- run `python results.py`")
+
+
+# -- LaTeX value formatting --------------------------------------------------
+def test_values_are_rounded_for_a_document():
+    """The store keeps full precision; a paper does not want 12 digits."""
+    assert results.tex_value(2.27355957031) == "2.274"
+    assert results.tex_value(0.144484200482) == "0.1445"
+
+
+def test_small_numbers_use_real_latex_maths():
+    """'5.187e-13' would set as the letter e in LaTeX."""
+    v = results.tex_value(5.18696197105e-13)
+    assert "e-" not in v and r"\times10^{-13}" in v
+    assert v.startswith("5.187")
+
+
+def test_large_numbers_use_real_latex_maths():
+    v = results.tex_value(1788122.1859)
+    assert r"\times10^{6}" in v and "e+" not in v
+
+
+def test_integers_stay_integers():
+    assert results.tex_value(34) == "34"
+    assert results.tex_value(2.0) == "2"
+
+
+def test_infinity_and_nan_are_latex_not_python():
+    """A flat direction has no floor; inf must not print as 'inf'."""
+    assert results.tex_value(float("inf")) == r"\infty"
+    assert results.tex_value(float("nan")) == r"\mathrm{NaN}"
+
+
+def test_fractions_get_a_percent_companion_macro():
+    tex = results.latex_macros({"a": {"efficiency": 0.2419}})
+    assert r"\newcommand{\zAEfficiency}{0.2419}" in tex
+    assert r"\newcommand{\zAEfficiencyPct}{24.19}" in tex
+
+
+def test_non_fractions_get_no_percent_companion():
+    tex = results.latex_macros({"a": {"width_mHz": 2.29}})
+    assert "Pct" not in tex
+
+
+def test_a_value_outside_zero_to_one_gets_no_percent_companion():
+    """Guards against a key named ...frac_... that is not actually a fraction."""
+    tex = results.latex_macros({"a": {"frac_x": 4.2}})
+    assert "Pct" not in tex
+
+
+def test_the_committed_macros_contain_no_python_float_repr():
+    data = results.load()
+    if not data:
+        pytest.skip("results.json not populated yet")
+    tex = results.latex_macros(data)
+    for line in tex.splitlines():
+        if line.startswith("\\newcommand"):
+            val = line.split("}{", 1)[1].rstrip("}")
+            assert "e-" not in val and "e+" not in val, line
+            assert "inf" not in val and "nan" not in val, line
