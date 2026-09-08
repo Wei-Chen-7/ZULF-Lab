@@ -28,6 +28,16 @@ Everything is built from scratch with NumPy/SciPy/Matplotlib (no qutip, no
 spin-dynamics libraries — the operators and propagation are written by hand so
 the physics is explicit).
 
+### Where this sits in the literature
+
+`literature_notes.md` records what the five closest papers do about degeneracy,
+read in full rather than from abstracts. The short version: none of them
+produces a posterior over parameters given one spectrum, but two identify
+unmeasurable coupling combinations, and the standard remedy for the labelling
+degeneracy — canonical ordering by chemical shift — is exactly the tool zero
+field does not have. It also lists three things that are *not* novel to this
+project, and two citation errors in the proposal.
+
 ### Every reported number comes from one place
 
 ```bash
