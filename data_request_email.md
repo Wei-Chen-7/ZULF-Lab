@@ -1,13 +1,15 @@
 # Draft: archived-data request
 
 Edit and send the text below the line. Two things to fill in: the supervisor's
-name, and the deadline in the closing paragraph if you want one.
+name, and the deadline in the closing paragraph if you want one. **Attach
+`readout.pdf`** — the body now refers to it.
 
-Unlike the README and the demo page, this draft is *not* generated from
+Unlike the README and `readout.tex`, this draft is *not* generated from
 `results.json` — it is a one-off you will edit before sending, and regenerating
 it would fight that. So if it sits unsent for a while, re-check the three
 figures it quotes (7.2 mHz, 1.0–2.3 mHz, ~2%) against `python results.py --show`
-before it goes out.
+before it goes out. They were last verified against the store on 2026-09-09 and
+were all current.
 
 The split matters. **Essential** is what Figure 5 cannot be made without.
 **Helpful** is what stops us having to assume something and defend the
@@ -25,15 +27,19 @@ The simulation side of the J-coupling inference project is finished, and the
 only thing left needs real spectra. Could I get access to the group's archived
 ZULF data?
 
-Where things stand: with nothing fitted, the forward model reproduces
-Wilzewski et al.'s published benzene-¹³C₁ multiplet from their own couplings to
-a scatter of 7.2 mHz — the residual is a single uniform offset that traces to
-the axis anchor I read off their figure, not to the physics. Trained networks
-for formic acid, formaldehyde, glycine and methanol each reach their
-information floor on ¹J_CH (1.0–2.3 mHz), agree with nested sampling on the
-exact likelihood to about 2%, and pass simulation-based calibration. The
-comparison against a least-squares fit is done on simulated data. Four of the
-five figures I promised are made; the fifth is the answer on real data.
+I have attached a short report with the figures, so I will keep this brief.
+With nothing fitted, the forward model reproduces Wilzewski et al.'s published
+benzene-¹³C₁ multiplet from their own couplings to a scatter of 7.2 mHz — the
+residual is a single uniform offset that traces to the axis anchor I read off
+their figure, not to the physics. Trained networks for formic acid,
+formaldehyde, glycine and methanol each reach their information floor on ¹J_CH
+(1.0–2.3 mHz) and agree with nested sampling on the exact likelihood to about
+2%. On the calibration check the nuisance parameters come back calibrated and
+the coupling comes back *conservative* — the posterior is slightly too wide,
+which is the safe direction and is why the importance reweighting has good
+coverage. The comparison against a least-squares fit is done on simulated data.
+Four of the five figures I promised are made; the fifth is the answer on real
+data.
 
 **Essential — Figure 5 cannot be made without these**
 
