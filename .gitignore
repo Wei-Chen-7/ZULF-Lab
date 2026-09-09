@@ -4,3 +4,7 @@ __pycache__/
 sbi-logs/
 # Generated: 769 KB of base64-embedded figures. Rebuild with make_demo_page.py.
 zulf_demo_page.html
+# LaTeX build products. readout.pdf is kept — it is the thing people are sent.
+*.aux
+*.out
+*.toc

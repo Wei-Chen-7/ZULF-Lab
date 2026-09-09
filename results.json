@@ -34,8 +34,8 @@
     "best_p_adj": 0.00868993485204,
     "best_predictor": "J_CH",
     "best_rho": -0.407224228952,
-    "cliff_p": 0.0579796150317,
-    "cliff_rho": 0.246150984852,
+    "cliff_p": 0.868117675316,
+    "cliff_rho": -0.0218949708252,
     "jumps": {
       "B_nT": 2,
       "B_theta_deg": 2,

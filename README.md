@@ -7,7 +7,7 @@ model plus simulation-based-inference stack built on top of it.
 
 ```bash
 pip install -r requirements.txt
-pytest -q                    # 203 tests, all physics claims are encoded here
+pytest -q                    # 204 tests, all physics claims are encoded here
 
 python zulf_nmr.py           # interactive teaching simulator
 python zulf_forward.py       # forward-model smoke demo
@@ -49,6 +49,14 @@ python results.py --show     # print the store
 Each study script records the numbers it owns into `results.json`; the README
 tables, `results_macros.tex` and the demo page all render from it. Nothing is
 transcribed by hand.
+
+`readout.tex` is the short status report for a supervisor — the same results in
+prose, with the figures. It reads `results_macros.tex` with `\input`, so it
+cannot drift: re-run a study and recompile.
+
+```bash
+pdflatex readout.tex          # twice, for the cross-references
+```
 
 This was not always true, and the cost showed up in an audit: a stale library
 table, a stale comparison table, a stale eigenvalue list, an error bar off by a
