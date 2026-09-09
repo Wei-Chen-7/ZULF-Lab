@@ -178,16 +178,20 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
     print(f"  efficiency: min {q[0]:.2%} | median {q[2]:.2%} | max {q[4]:.2%} "
           f"| spread {q[4] / max(q[0], 1e-9):.0f}x")
 
+    # Named, not `rho`/`p`: the screening loop below reuses those, and when it
+    # did the recorded "cliff_rho" was silently the last screened predictor.
+    cliff_rho = cliff_p = float("nan")
     if finite.sum() > 5:
         d, e = dists[finite], effs[finite]
         near = d < np.median(d)
         from scipy import stats
-        rho, p = stats.spearmanr(d, e)
-        print(f"\n  Spearman rho(distance to cliff, efficiency) = {rho:+.3f} "
-              f"(p = {p:.3g})")
+        cliff_rho, cliff_p = stats.spearmanr(d, e)
+        print(f"\n  Spearman rho(distance to cliff, efficiency) = {cliff_rho:+.3f} "
+              f"(p = {cliff_p:.3g})")
         print(f"  median efficiency, near half : {np.median(e[near]):.2%}")
         print(f"  median efficiency, far half  : {np.median(e[~near]):.2%}")
-        verdict = ("cliffs explain the spread" if (rho > 0.3 and p < 0.05)
+        verdict = ("cliffs explain the spread"
+                   if (cliff_rho > 0.3 and cliff_p < 0.05)
                    else "no clear link -- the spread has another cause")
         print(f"  -> {verdict}")
 
@@ -267,7 +271,7 @@ def study(seed=0, n_obs=60, n_sims=150_000, n_post=4000):  # pragma: no cover
 
     results.record("cliffs", dict(
         n_obs=n_obs, merge_mHz=prob.merge_hz * 1e3,
-        cliff_rho=float(rho), cliff_p=float(p),
+        cliff_rho=float(cliff_rho), cliff_p=float(cliff_p),
         best_predictor=best[0][0] if best else None,
         best_rho=float(best[0][1]) if best else None,
         best_p_adj=float(best[0][2]) if best else None,

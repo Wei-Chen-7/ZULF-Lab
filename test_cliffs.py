@@ -122,6 +122,37 @@ def test_distance_is_infinite_when_nothing_jumps(problem, theta, monkeypatch):
     assert not np.isfinite(rc.distance_to_cliff(problem, theta))
 
 
+# -- what gets recorded ------------------------------------------------------
+def test_recorded_cliff_rho_is_the_cliff_correlation():
+    """The stored cliff_rho must be rho(distance to cliff, efficiency).
+
+    It was not. ``rho`` held the cliff correlation, then the screening loop
+    below it reused the same name, so ``results.record`` filed the *last
+    screened predictor* under ``cliff_rho`` -- 0.246 (p = 0.058), the
+    reweighted width on J, in place of the true -0.022 (p = 0.868). The
+    mislabelled pair then reached results_macros.tex and any document built
+    from it, reading as a near-significant link where the run log said there
+    was none. Recompute it from the saved arrays and compare.
+    """
+    import json
+    import os
+    from scipy import stats
+
+    if not (os.path.exists("resolution_cliffs.npz")
+            and os.path.exists("results.json")):
+        pytest.skip("needs a completed resolution_cliffs.py run")
+
+    d = np.load("resolution_cliffs.npz")
+    stored = json.load(open("results.json")).get("cliffs")
+    if stored is None:
+        pytest.skip("no cliffs section in the store")
+
+    finite = np.isfinite(d["dists"])
+    expect, expect_p = stats.spearmanr(d["dists"][finite], d["effs"][finite])
+    assert stored["cliff_rho"] == pytest.approx(expect, abs=1e-9)
+    assert stored["cliff_p"] == pytest.approx(expect_p, abs=1e-9)
+
+
 # -- the cache key -----------------------------------------------------------
 def test_signature_tracks_the_merge_width():
     a = zi.InferenceProblem(seed=0)
