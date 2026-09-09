@@ -23,6 +23,7 @@ FIGURES = {
     "fig2": "figure2_posterior.png",
     "fig3": "sbc_ranks.png",
     "fig4": "figure4_comparison.png",
+    "fig6": "figure6_misspecification.png",
 }
 
 
@@ -276,7 +277,7 @@ footer{padding:34px 0 0;font:400 .82rem/1.6 var(--mono);color:var(--ink-3)}
     <span class="chip on">Forward model validated &middot; 7.2 mHz scatter</span>
     <span class="chip on">4 trained networks, all at their information floor</span>
     <span class="chip on">Calibrated (SBC) &middot; exact-likelihood reference</span>
-    <span class="chip on">204 tests</span>
+    <span class="chip on">216 tests</span>
     <span class="chip off">Figure 5 &mdash; needs archived spectra</span>
   </div>
 </header>
@@ -308,11 +309,14 @@ __LIBROWS__
   </div>
 
   <div class="col stack" style="margin-top:26px">
-    <p>Efficiency is the fraction of the network&rsquo;s draws that survive reweighting, and it is
-    also the misspecification detector: on real data it is meant to collapse when the model is
-    wrong. It varies by ~30&times; between observations of the <em>same</em> molecule with the
-    <em>same</em> network, which is why the project&rsquo;s pass/fail threshold on it should be read
-    over several spectra rather than one.</p>
+    <p>Efficiency is the fraction of the network&rsquo;s draws that survive reweighting. It varies
+    by ~30&times; between observations of the <em>same</em> molecule with the <em>same</em> network,
+    which is why the project&rsquo;s pass/fail threshold on it should be read over several spectra
+    rather than one.</p>
+    <p>It has also been described here as a misspecification detector, meant to collapse when the
+    model is wrong. <b>That has now been tested, and it is only partly true</b> &mdash; see the
+    section below. It collapses for model errors that point away from the parameters, and misses
+    the ones that point along them.</p>
     <p>These are not the best figures available, and it is worth saying so: a wider flow reaches
     <b>37%</b> against the 24% above on formic acid, at the same reweighted precision. Every result
     here uses the narrower one, because the precision is set by the exact likelihood and only the
@@ -369,9 +373,10 @@ __LIBROWS__
       intractability.</div>
     <p>It is that the answer is a <em>distribution</em>: every setting consistent with the spectrum,
     with a weight on each, rather than one number per coupling. Having the likelihood in closed form
-    is what lets the network&rsquo;s samples be reweighted into an exact posterior; and the efficiency
-    of that reweighting doubles as a misspecification detector, meant to collapse when the model is
-    wrong about real data &mdash; the one check no simulation study can run on itself.</p>
+    is what lets the network&rsquo;s samples be reweighted into an exact posterior. The efficiency of
+    that reweighting was also meant to double as a misspecification detector on real data; measured
+    against deliberately wrong models it catches one failure mode of three, which is the subject of
+    Figure 6.</p>
     <p style="font-size:.92rem;color:var(--ink-2)">Searching globally with no starting guess is
     <em>not</em> the distinguishing feature: the neural state of the art for high-field spectra
     already does that (see below). Returning a calibrated posterior, and naming the directions the
@@ -503,6 +508,28 @@ __LIBROWS__
       log-likelihoods identical to 5&times;10<sup>&minus;13</sup>; the network holds both modes at
       51/49, the fit returns 54.4 &plusmn; 2.0&deg; or 125.6 &plusmn; 2.0&deg; depending only on where it
       started.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="figtag"><span class="num">Figure 6</span>
+        <h3>What happens when the model itself is wrong</h3></div>
+      <div class="plate"><img src="__FIG6__" alt="Six panels in two rows: the shift in the fitted coupling against its reported error bar for three misspecifications, and below each, whether the goodness of fit or the sampling efficiency reacts."></div>
+      <figcaption>The efficiency has been described throughout as a misspecification detector. It had
+      never been fed a wrong model, because every spectrum the pipeline had seen came from the same
+      simulator it fits with. Three spectra were built that no parameter value reproduces.
+      <b>Only one of the three is caught.</b> A field drifting 1&nbsp;nT during acquisition raises
+      &chi;<sup>2</sup>/dof to <b>28.3</b> and drops efficiency to 0.36 of clean, and the coupling
+      stays covered because the interval widens to match. But two protons 2&nbsp;Hz away from
+      equivalent shift J<sub>CH</sub> by <b>12.3 mHz</b>, nine times its own interval, with
+      &chi;<sup>2</sup>/dof at 1.09 and efficiency unchanged; and a frequency axis mis-scaled by
+      10<sup>&minus;4</sup> shifts it <b>22.4 mHz</b> with every diagnostic flat. The second is a
+      summary problem: breaking equivalence does make forbidden lines appear near J and J/2, but four
+      orders of magnitude down, and the peak list keeps only the strongest few, so the evidence is
+      discarded before the likelihood sees it. The third is a theorem: scaling every frequency by
+      1+&epsilon; is reproduced exactly by scaling J and |B| up and T<sub>2</sub> down, to
+      5.8&times;10<sup>&minus;7</sup> of one noise unit, so no residual survives for any test to
+      find. The detector catches model errors pointing <em>away</em> from the parameters and misses
+      those pointing <em>along</em> them, which is the wrong way round.</figcaption>
     </figure>
 
     <figure>

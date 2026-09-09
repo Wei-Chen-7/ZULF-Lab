@@ -7,7 +7,7 @@ model plus simulation-based-inference stack built on top of it.
 
 ```bash
 pip install -r requirements.txt
-pytest -q                    # 204 tests, all physics claims are encoded here
+pytest -q                    # 216 tests, all physics claims are encoded here
 
 python zulf_nmr.py           # interactive teaching simulator
 python zulf_forward.py       # forward-model smoke demo
@@ -15,10 +15,12 @@ python nested_reference.py   # exact-likelihood reference posterior
 python methanol_demo.py      # four spins: a measured coupling and a flat one
 python local_baseline.py     # the least-squares baseline, three cases
 python resolution_cliffs.py  # where a peak-list summary jumps, and what it costs
+python misspecification.py   # what happens when the model itself is wrong
 
 python make_figure1.py       # model over a published spectrum
 python make_figure2.py       # the posterior and its spread
 python make_figure4.py       # vs exact sampling and vs a least-squares fit
+python make_figure6.py       # what happens when the model is wrong
 ```
 
 Trained networks are cached under `models/` and reused across scripts, so the
@@ -78,6 +80,7 @@ run; edit `results.py`, not the block.
 | Trained networks for a few small molecules | done — `models/`, four molecules, all at their information floor |
 | Calibration (SBC), efficiency, exact-likelihood reference | done |
 | Comparison against a least-squares fit | done — three cases, all on simulated data |
+| Behaviour when the model is wrong | done — **warns in one case of three**; see below |
 | Figure 1 — model over a published spectrum | done |
 | Figure 2 — the posterior and its spread | done |
 | Figure 3 — the calibration check | done |
@@ -511,6 +514,64 @@ making 1 the meaningful threshold. On methanol the scaled spectrum is
 identical to twelve decimals. Started at 70° the fit returns 54.4 ± 2.0°; started
 at 110° it returns 125.6 ± 2.0°. Each interval is tight, honest, and excludes the
 other. The network holds both.
+
+## When the model is wrong
+
+```bash
+python misspecification.py      # three spectra the model cannot explain
+python make_figure6.py          # writes figure6_misspecification.png
+```
+
+![figure 6](figure6_misspecification.png)
+
+Everything above assumes the model is right. The efficiency has been described
+throughout as a misspecification detector, meant to collapse on data the model
+cannot explain. That was never tested: every observation the pipeline had seen
+came from the same simulator the inference uses.
+
+Three spectra were built that no value of theta reproduces. For each, two
+questions: is the answer still right, and does anything warn you? The efficiency
+is measured alongside the older and simpler check, the goodness of fit of the
+residuals at the best-fit point.
+
+| misspecification | shift in J_CH | covered | chi2/dof | efficiency vs clean |
+|---|---|---|---|---|
+| protons 2 Hz from equivalent | 12.27 mHz (~9x the interval) | 0% | 1.09 | 1.00 |
+| field drifts 1 nT in acquisition | 0.00 mHz | 100% | **28.31** | **0.36** |
+| frequency axis off by 1e-4 | 22.43 mHz (~20x) | 0% | 0.92 | 1.02 |
+
+**Only the middle row is caught.** The other two shift the coupling by many
+times its own error bar while every diagnostic sits exactly where it was.
+
+*Why the equivalence case hides.* Breaking equivalence antisymmetrically is
+**quadratic**, not linear — the XA₂ line sits at 3/2 of the *mean* coupling, so
+the antisymmetric part cannot enter at first order. It does produce a signature:
+lines appear near J and J/2 that the ΔI_A = 0 rule forbids in the correct model,
+so nothing else could put them there. But they arrive four orders of magnitude
+below the main multiplet (6.9×10⁻⁶ against 1.2×10⁻¹ at δ = 1 Hz) and
+`peak_summary` keeps only the strongest few. **The evidence is discarded before
+the likelihood sees it**, and the fit absorbs the rest into a shifted J with
+clean residuals. A slot for lines the model does not predict would recover it.
+
+*Why the axis-scale case cannot be caught at all.* This one is a theorem, not an
+accident. Multiplet lines sit at fixed multiples of J and the low-frequency line
+scales with the field, so scaling every frequency by 1+ε is reproduced exactly
+by `J → J(1+ε)`, `|B| → |B|(1+ε)`, `T2 → T2/(1+ε)`. The two summaries agree to
+**5.8×10⁻⁷** of one noise unit, so there is no residual for any test to find. No
+amount of statistics helps; the axis has to be calibrated independently and the
+calibration uncertainty carried through by hand.
+
+*Why the drift case is caught, and why it is silent below 1 nT.* Sub-resolution
+drift changes nothing, which is correct rather than lucky — a drift smaller than
+the peak-merge resolution does not change a peak list. Above it the smearing is
+differential across lines and no single T₂ can match it, so the residual has
+nowhere to hide.
+
+**The pattern.** The detector works on model errors pointing *away* from the
+parameters and is blind to those pointing *along* them, which is the wrong way
+round: the second kind get absorbed into a plausible parameter value instead of
+showing up as a bad fit. Efficiency and goodness of fit agree in all three cases,
+so the network diagnostic adds nothing the classical residual test does not.
 
 ## Correctness test
 

@@ -44,8 +44,11 @@ allows, and its posterior agrees to within \zVsNestedRelDifferencePct\,\% with
 an exact reference calculation (nested sampling on the true likelihood). The
 calibration check comes back conservative rather than overconfident, which is
 the safe direction. Where a coupling cannot
-be measured at all, the method says so instead of returning a value. The one
-thing missing is real data: everything here runs on simulated spectra.
+be measured at all, the method says so instead of returning a value. Section 7
+is the important caveat: when the model itself is wrong, the built-in warning
+fires for one of the three cases tested and stays silent for the other two,
+both of which shift the coupling by many times its stated error bar. That has
+to be fixed before real data is worth touching.
 \end{abstract}
 
 \section{The problem, and why a distribution}
@@ -104,6 +107,7 @@ Trained networks             & done: four molecules, all at the precision
 Calibration and reference    & done: SBC, plus nested sampling on the exact
                                likelihood \\
 Comparison to least squares  & done: three cases, all simulated \\
+Behaviour when the model is wrong & done: warns in one of three cases \\
 Figure 1: model over published data & done \\
 Figure 2: the posterior    & done \\
 Figure 3: the calibration check & done \\
@@ -284,6 +288,89 @@ curvature, and each excludes the other. The network holds both modes, at
 \zBaselineBimodalMassBelowNinetyDegPct\,\% and
 \zBaselineBimodalMassAboveNinetyDegPct\,\%, which is correct, because they are
 exactly degenerate.
+
+\section{When the model is wrong}
+
+Everything above assumes the model is right, which on real data it will not be.
+The pipeline has always carried a safeguard for this: the fraction of usable
+samples after re-weighting is supposed to collapse when the data cannot be
+explained, so the method fails loudly instead of returning a tight wrong
+answer. That safeguard had never been tested, because every spectrum it had
+ever seen came from the same simulator the inference uses.
+
+So I built three spectra the model cannot reproduce at any parameter value,
+each one something that happens in a real experiment, and asked two questions
+of each: is the answer still right, and does anything warn you? Alongside the
+efficiency I measured the older and simpler check, the goodness of fit of the
+residuals at the best-fit point.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figure6_misspecification.png}
+\caption{Top row: how far the reported coupling moves, against the error bar it
+is reported with. Once the point leaves the band the method is confidently
+wrong. Bottom row: whether either check notices. Only the middle column
+notices.}
+\label{fig:six}
+\end{figure}
+
+\paragraph{Two couplings the model calls equal, and are not.} This is the case
+Wilzewski et al. invoke for their own discrepancy, where residual dipolar
+couplings are hard to tell from J-couplings. An imbalance of
+\zMisspecificationEquivalenceWorstLevel\,Hz shifts \JCH{} by
+\zMisspecificationEquivalenceBiasAtWorstMhz\,mHz, roughly nine times its own
+95\,\% interval, and the interval never contains the truth. Neither check
+reacts at all: the goodness of fit stays at
+\zMisspecificationEquivalenceChiTwoPerDofAtWorst{} with $p =
+\zMisspecificationEquivalencePValueAtWorst$, and the efficiency is
+\zMisspecificationEquivalenceEfficiencyRatio{} times its clean value. This is a
+silent failure of exactly the kind the safeguard was meant to prevent.
+
+I traced the mechanism rather than leaving it as a black box, and it is
+fixable. Breaking the equivalence does produce a signature: lines appear near
+$J$ and $J/2$ that the selection rule forbids in the correct model, so nothing
+else could put them there. But they arrive four orders of magnitude weaker than
+the main multiplet, and the peak-list summary keeps only the strongest few
+lines. The evidence is discarded before the likelihood sees it, and the fit
+then absorbs the rest into a shifted coupling with clean residuals. Keeping a
+slot for lines the model does not predict would recover it.
+
+\paragraph{The field drifts during acquisition.} This one behaves as
+advertised. Below the resolution at which peaks are merged, a drift changes
+nothing, which is correct rather than lucky: a sub-resolution drift does not
+change a peak list. Above it, at
+\zMisspecificationDriftWorstLevel\,nT, the goodness of fit rises to
+\zMisspecificationDriftChiTwoPerDofAtWorst{} with $p =
+\zMisspecificationDriftPValueAtWorst$ and the efficiency falls to
+\zMisspecificationDriftEfficiencyRatio{} of its clean value. The warning is
+unmissable, and the coupling stays covered because the interval widens to
+match. This is the behaviour the whole approach was promised on.
+
+\paragraph{The frequency axis is mis-scaled.} An error of
+$\epsilon = \zMisspecificationAxisScaleWorstLevel$ shifts \JCH{} by
+\zMisspecificationAxisScaleBiasAtWorstMhz\,mHz with the error bar unchanged,
+the goodness of fit unchanged at
+\zMisspecificationAxisScaleChiTwoPerDofAtWorst, and the efficiency unchanged.
+Here the blindness is not an accident of the summary but a theorem. Multiplet
+lines sit at fixed multiples of $J$ and the low-frequency line scales with the
+field, so scaling every frequency by $1+\epsilon$ is reproduced exactly by
+$J \to J(1+\epsilon)$, $|B| \to |B|(1+\epsilon)$, $T_2 \to T_2/(1+\epsilon)$.
+The two summaries agree to
+$\zMisspecificationAxisDegeneracySigma$ of one noise unit, so there is no
+residual for any check to find. No amount of statistics fixes this. The
+frequency axis has to be calibrated independently, and the calibration
+uncertainty has to be carried into the result by hand.
+
+\paragraph{What this means.} The safeguard works on model errors that point
+\emph{away} from the parameters, and is blind to those that point \emph{along}
+them. That is not a detail, because the dangerous systematics are the second
+kind: they are absorbed into a plausible parameter value rather than showing up
+as a bad fit. Efficiency and goodness of fit agree with each other in all three
+cases, so the network's own diagnostic adds nothing here that the classical
+residual test does not already give. Before this method is used on real data,
+either the summary has to keep the lines that carry the evidence, or the
+systematics have to be modelled as parameters so the posterior can widen
+honestly.
 
 \section{Things that did not work, or turned out otherwise}
 

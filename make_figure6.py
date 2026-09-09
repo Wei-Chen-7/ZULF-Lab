@@ -99,6 +99,10 @@ def main():
         if logx:
             ax.set_xscale("log")
         ax.set_yscale("log")
+        # One scale across all three panels. Left to autoscale, a dead-flat
+        # chi2 gets stretched over a range of 0.06 and reads as a rising
+        # trend, which is the opposite of what these panels show.
+        ax.set_ylim(0.5, 60.0)
         ax.set_ylabel(r"$\chi^2/$dof", fontsize=9, color=C_CHI2)
         ax.tick_params(axis="y", labelcolor=C_CHI2, labelsize=8)
         ax.tick_params(axis="x", labelsize=8)

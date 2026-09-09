@@ -136,6 +136,39 @@
       "width_mHz": 1.03759765625
     }
   },
+  "misspecification": {
+    "axis_degeneracy_sigma": 5.82019765716e-07,
+    "axis_scale": {
+      "bias_at_worst_mHz": 22.4297837571,
+      "chi2_per_dof_at_worst": 0.924558045659,
+      "coverage_at_worst": 0.0,
+      "efficiency_at_worst": 0.193627410374,
+      "efficiency_clean": 0.18963553154,
+      "efficiency_ratio": 1.02105026839,
+      "p_value_at_worst": 0.369939488901,
+      "worst_level": 0.0001
+    },
+    "drift": {
+      "bias_at_worst_mHz": 0.00409379502742,
+      "chi2_per_dof_at_worst": 28.3109242328,
+      "coverage_at_worst": 1.0,
+      "efficiency_at_worst": 0.0685660593151,
+      "efficiency_clean": 0.18963553154,
+      "efficiency_ratio": 0.361567575224,
+      "p_value_at_worst": 2.32356275782e-28,
+      "worst_level": 1.0
+    },
+    "equivalence": {
+      "bias_at_worst_mHz": 12.2693130357,
+      "chi2_per_dof_at_worst": 1.09318962915,
+      "coverage_at_worst": 0.0,
+      "efficiency_at_worst": 0.0700853702096,
+      "efficiency_clean": 0.0703693136595,
+      "efficiency_ratio": 0.995964953542,
+      "p_value_at_worst": 0.423368144095,
+      "worst_level": 2.0
+    }
+  },
   "nested": {
     "J_width_mHz": 2.2395019358,
     "floor_mHz": 2.2632130652,
@@ -185,12 +218,12 @@
     ]
   },
   "vs_nested": {
-    "rel_difference": 0.0220211569288,
     "curvature_vs_fisher_rel": 1.13886593349e-06,
     "efficiency": 0.241904088487,
     "floor_mHz": 2.2632130652,
     "local_mHz": 2.26321323434,
     "nested_mHz": 2.2395019358,
-    "npe_mHz": 2.28881835938
+    "npe_mHz": 2.28881835938,
+    "rel_difference": 0.0220211569288
   }
 }

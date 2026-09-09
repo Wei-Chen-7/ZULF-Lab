@@ -19,8 +19,11 @@ whole project, and they are not the point. The existing fit already reports
 1 mHz. Leading with precision would invite exactly the reply that the field is
 not statistics-limited, and the rest of the email would not get read.
 
-The numbers quoted below are from Tables I and II of Wilzewski et al. and were
-checked against the paper text on 2026-09-09, not from `results.json`.
+The Wilzewski numbers below are from Tables I and II of that paper and were
+checked against the paper text on 2026-09-09. The misspecification numbers
+(28x, 12 mHz, 22 mHz, nine times the error bar) come from
+`python misspecification.py` and are recorded in `results.json`; Figure 6 of
+`readout.pdf` plots them, so attach the report again if you send this.
 
 ---
 
@@ -71,20 +74,46 @@ useful to the group.
    spectrum. Honest, but the weakest of the three, since comparable tools
    already exist at high field.
 
-On noise, drifts and nonlinearities, you are right, and they are not in the
+On noise, drifts and nonlinearities you are right, and they are not in the
 model. What I have is an idealized noise level applied to fitted peak
-positions, not something derived from a real FID. The plan has two halves: put
-the effects that can be parameterized into the model, and for the rest rely on
-a consistency check the method already computes, which measures how well the
-data actually support the model and is supposed to collapse when the model is
-wrong. I have never tested that check against deliberately wrong data, so I am
-setting that up now: spectra carrying an extra coupling the model does not
-know about, spectra with field drift during acquisition, and spectra with a
-mis-scaled frequency axis. If the check does not fire, the method is not ready
-for real data, and I would rather find that out before asking you for any.
+positions, not something derived from a real FID. The method does compute a
+consistency check that is supposed to collapse when the model cannot explain
+the data, and I had been relying on that. Your email made me notice I had never
+actually tested it, because every spectrum it had ever seen came from the same
+simulator it fits with. So I built three spectra it cannot explain. The result
+is that it mostly does not notice.
 
-Which is why there is no hurry on the archived spectra. I would rather agree on
-where this is going first.
+Field drift during acquisition is caught, loudly. The fit quality degrades by a
+factor of 28, the consistency check falls to a third of its clean value, and
+the coupling stays inside its error bar because the error bar widens to match.
+That is the behaviour I had been assuming throughout.
+
+The other two are silent failures. If two protons the model treats as
+equivalent actually differ by 2 Hz, which is the scale of the residual dipolar
+couplings you would expect in a partially aligned aromatic, the reported
+coupling moves by 12 mHz, about nine times its own error bar, and every
+diagnostic sits exactly where it was on clean data. I traced the reason.
+Breaking the equivalence does produce a signature, namely lines near J and J/2
+that the selection rule forbids in the correct model, so nothing else could put
+them there. But they come out four orders of magnitude weaker than the main
+multiplet, and my peak-list summary keeps only the strongest few lines. I am
+throwing the evidence away before the fit ever sees it. That one is fixable.
+
+The third is not fixable by better statistics. A frequency axis mis-scaled by
+one part in 10^4 shifts the coupling by 22 mHz with no change in any
+diagnostic, and that is provable rather than merely observed: scaling every
+frequency by 1+eps is reproduced exactly by scaling J and the field up and T2
+down. The two predictions agree to under a millionth of the measurement noise,
+so there is no residual left for any test to find. The frequency axis has to be
+calibrated independently and its uncertainty carried through by hand.
+
+The honest summary is that the method catches model errors pointing away from
+its parameters and is blind to those pointing along them. That is the wrong way
+round, because the second kind is the dangerous kind: they get absorbed into a
+plausible-looking parameter value instead of showing up as a bad fit.
+
+Which is also why there is no hurry on the archived spectra. I would rather fix
+that and agree on where this is going first.
 
 Best,
 Wei
