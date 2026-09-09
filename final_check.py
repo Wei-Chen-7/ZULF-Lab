@@ -119,7 +119,7 @@ def main():
         print(f"  nested sampling : {(rhi - rlo)*1e3:6.2f} mHz")
         print(f"  reweighted NPE  : {m['reweighted_mHz']:6.2f} mHz  "
               f"(efficiency {m['efficiency']:.1%})")
-        print(f"  agreement       : {abs(m['reweighted_mHz']-(rhi-rlo)*1e3)/((rhi-rlo)*1e3):.1%}")
+        print(f"  relative diff   : {abs(m['reweighted_mHz']-(rhi-rlo)*1e3)/((rhi-rlo)*1e3):.1%}")
         nested_mHz = (rhi - rlo) * 1e3
         sigma_J, curv_vs_fisher = _local_sigma_J(prob, ref)
         results.record("vs_nested", dict(
@@ -128,7 +128,7 @@ def main():
             curvature_vs_fisher_rel=curv_vs_fisher,
             floor_mHz=zi.information_floor(prob, theta_true)[0] * 1e3,
             efficiency=m["efficiency"],
-            agreement=abs(m["reweighted_mHz"] - nested_mHz) / nested_mHz))
+            rel_difference=abs(m["reweighted_mHz"] - nested_mHz) / nested_mHz))
 
     j = rows[0]
     results.record("sbc", dict(

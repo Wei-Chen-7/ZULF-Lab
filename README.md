@@ -360,7 +360,7 @@ same either way: **read the efficiency criterion over several spectra, not one.*
 | reweighted NPE | 2.29 mHz |
 | local fit (curvature) | 2.26 mHz |
 | information floor | 2.26 mHz |
-| agreement, NPE vs nested | **2.2%** |
+| NPE vs nested, relative difference | **2.2%** |
 <!-- END generated: vs_nested -->
 
 Earlier, at 1.7% efficiency, the same comparison agreed only to 4%. At ESS ≈ 340

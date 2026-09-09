@@ -40,10 +40,12 @@ This is a status report on the simulation side of the project. The goal is to
 take one zero-field NMR spectrum and return a probability distribution over the
 $J$-couplings that produced it, rather than a single fitted number. Four
 molecules are done. Each trained network reaches the best precision the noise
-allows, agrees to \zVsNestedAgreementPct\,\% with an exact reference
-calculation, and passes a calibration test. Where a coupling cannot be measured
-at all, the method says so instead of returning a value. The one thing missing
-is real data: everything here runs on simulated spectra.
+allows, and its posterior agrees with an exact reference calculation --- nested
+sampling on the true likelihood --- to within
+\zVsNestedRelDifferencePct\,\%. The calibration check comes back conservative
+rather than overconfident, which is the safe direction. Where a coupling cannot
+be measured at all, the method says so instead of returning a value. The one
+thing missing is real data: everything here runs on simulated spectra.
 \end{abstract}
 
 \section{The problem, and why a distribution}
@@ -258,7 +260,7 @@ would suggest a corroboration that does not exist.
 
 What the table does say is stronger. Two fully Bayesian methods --- neither of
 which assumes the posterior is Gaussian --- land within
-\zVsNestedAgreementPct\,\% of the asymptotic bound. That means the posterior
+\zVsNestedRelDifferencePct\,\% of the asymptotic bound. That means the posterior
 \emph{is} Gaussian to about that accuracy on this problem, which explains why
 the simple fit ties here, and predicts exactly where it will stop working:
 wherever the posterior is not Gaussian. That is cases (b) and (c).

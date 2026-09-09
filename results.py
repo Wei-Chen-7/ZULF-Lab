@@ -99,7 +99,8 @@ def _macro_name(path_parts):
 
 #: Key fragments whose value is a fraction worth also having as a percentage.
 #: A paper writes "24.2%", and LaTeX cannot multiply by 100 on its own.
-_PCT_KEYS = ("efficiency", "frac_", "mass_", "agreement", "below_one_percent")
+_PCT_KEYS = ("efficiency", "frac_", "mass_", "rel_difference",
+             "below_one_percent")
 
 
 def tex_value(x, sig=4):
@@ -200,7 +201,7 @@ def readme_blocks(data):
             f"| reweighted NPE | {_fmt(v['npe_mHz'], 2)} mHz |",
             f"| local fit (curvature) | {_fmt(v['local_mHz'], 2)} mHz |",
             f"| information floor | {_fmt(v['floor_mHz'], 2)} mHz |",
-            f"| agreement, NPE vs nested | **{_fmt(100 * v['agreement'], 1)}%** |",
+            f"| NPE vs nested, relative difference | **{_fmt(100 * v['rel_difference'], 1)}%** |",
         ])
     return out
 
