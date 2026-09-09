@@ -40,10 +40,10 @@ This is a status report on the simulation side of the project. The goal is to
 take one zero-field NMR spectrum and return a probability distribution over the
 $J$-couplings that produced it, rather than a single fitted number. Four
 molecules are done. Each trained network reaches the best precision the noise
-allows, and its posterior agrees with an exact reference calculation --- nested
-sampling on the true likelihood --- to within
-\zVsNestedRelDifferencePct\,\%. The calibration check comes back conservative
-rather than overconfident, which is the safe direction. Where a coupling cannot
+allows, and its posterior agrees to within \zVsNestedRelDifferencePct\,\% with
+an exact reference calculation (nested sampling on the true likelihood). The
+calibration check comes back conservative rather than overconfident, which is
+the safe direction. Where a coupling cannot
 be measured at all, the method says so instead of returning a value. The one
 thing missing is real data: everything here runs on simulated spectra.
 \end{abstract}
@@ -52,7 +52,7 @@ thing missing is real data: everything here runs on simulated spectra.
 
 At zero field there is no chemical shift. The spectrum is produced by the
 $J$-couplings alone, which is what makes zero-field NMR attractive for
-measuring them --- and also what makes the measurement hard, because the
+measuring them. It is also what makes the measurement hard, because the
 couplings are the only labels the nuclei have.
 
 The standard way to get couplings out of a spectrum is a least-squares fit: pick
@@ -66,7 +66,7 @@ spectrum genuinely cannot see. Three of them are exact:
 \item exchanging two nuclei with the same gyromagnetic ratio leaves it
       unchanged;
 \item a field at angle $\theta_B$ and one at $180^\circ-\theta_B$ give
-      identical spectra --- log-likelihoods equal to
+      identical spectra, with log-likelihoods equal to
       $\zBaselineBimodalLoglDifference$ in our own test.
 \end{itemize}
 
@@ -81,7 +81,7 @@ say the first, and will say it even when it is not true.
 
 \paragraph{The method in one paragraph.}
 Simulate many spectra from known couplings. Reduce each to a short list of peak
-positions, amplitudes and widths --- not the raw spectrum, which would be
+positions, amplitudes and widths, not the raw spectrum, which would be
 $\sim$200\,000 points. Train a neural network to map that list back to a
 distribution over the parameters. Then, because our forward model is
 deterministic with additive Gaussian noise, the likelihood is available in
@@ -96,19 +96,19 @@ provides the accuracy.
 \toprule
 \textbf{Item} & \textbf{State} \\
 \midrule
-Forward model                & done --- reproduces a published 7-spin
+Forward model                & done: reproduces a published 7-spin
                                spectrum to \zFigureOneScatterMhz\,mHz \\
 Priors, summaries, training  & done \\
-Trained networks             & done --- four molecules, all at the precision
+Trained networks             & done: four molecules, all at the precision
                                limit \\
-Calibration and reference    & done --- SBC, plus nested sampling on the exact
+Calibration and reference    & done: SBC, plus nested sampling on the exact
                                likelihood \\
-Comparison to least squares  & done --- three cases, all simulated \\
-Figure 1 --- model over published data & done \\
-Figure 2 --- the posterior    & done \\
-Figure 3 --- the calibration check & done \\
-Figure 4 --- against the alternatives & done \\
-\textbf{Figure 5 --- real data} & \textbf{needs the group's archived spectra} \\
+Comparison to least squares  & done: three cases, all simulated \\
+Figure 1: model over published data & done \\
+Figure 2: the posterior    & done \\
+Figure 3: the calibration check & done \\
+Figure 4: against the alternatives & done \\
+\textbf{Figure 5: real data} & \textbf{needs the group's archived spectra} \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -138,7 +138,7 @@ mean $\zFigureOneMeanOffsetMhz$\,mHz from the nearest predicted line, with a
 scatter of only \textbf{\zFigureOneScatterMhz\,mHz}.
 
 The offset is worth a sentence, because it is easy to misread. It is
-\emph{uniform} --- every line is displaced by the same amount. That is the
+\emph{uniform}: every line is displaced by the same amount. That is the
 signature of reading the figure's axis anchor slightly wrong
 (\zFigureOneAnchorPt\,pt out of \zFigureOnePtPerHz\,pt/Hz accounts for it), not
 of a physics error, which would displace lines by different amounts. Regressing
@@ -150,7 +150,7 @@ a constant offset}, and the offset is ours, not the model's.
 
 Four molecules, one network each. The ``floor'' column is the best 95\,\%
 interval the noise permits, computed from the Fisher information of the
-simulator --- a hard limit, not a target.
+simulator. It is a hard limit, not a target.
 
 \begin{center}
 \begin{tabular}{@{}lccccc@{}}
@@ -159,7 +159,7 @@ Molecule & Spins & 95\,\% width & Floor & Ratio & Unmeasurable \\
 \midrule
 \zLibraryFormicAcidLabel   & \zLibraryFormicAcidNSpins   &
   \zLibraryFormicAcidWidthMhz\,mHz   & \zLibraryFormicAcidFloorMhz   &
-  \zLibraryFormicAcidRatio   & --- \\
+  \zLibraryFormicAcidRatio   & none \\
 \zLibraryFormaldehydeLabel & \zLibraryFormaldehydeNSpins &
   \zLibraryFormaldehydeWidthMhz\,mHz & \zLibraryFormaldehydeFloorMhz &
   \zLibraryFormaldehydeRatio & \JHH \\
@@ -179,7 +179,7 @@ field magnitude, field angle and $T_2$ come in at $1.013$, $0.985$ and $1.050$
 times their floors.
 
 One result here is easy to miss. The precision \emph{improves} as molecules get
-bigger --- \zLibraryFormicAcidWidthMhz{} to \zLibraryMethanolWidthMhz\,mHz ---
+bigger, from \zLibraryFormicAcidWidthMhz{} to \zLibraryMethanolWidthMhz\,mHz,
 which is not what averaging more lines would give. The reason is in the physics:
 an XA$_2$ group puts its line at $\tfrac{3}{2}J$ and an XA$_3$ group at $J$ and
 $2J$, so the lines move \emph{faster} than $J$ does, and the same peak-position
@@ -207,7 +207,8 @@ those ranks must be uniform.
 \includegraphics[width=0.94\textwidth]{sbc_ranks.png}
 \caption{Calibration ranks over \zSbcNTrials{} trials. Flat is correct. For
 $|B|$, $\theta_B$ and $T_2$ they are flat. For $J$ they are depleted at the
-edges, which means the posterior is too \emph{wide} --- the safe direction.}
+edges, which means the posterior is too \emph{wide}, which is the safe
+direction.}
 \label{fig:three}
 \end{figure}
 
@@ -220,8 +221,8 @@ truth.
 \section{How it compares with a least-squares fit}
 
 This is the comparison that decides whether the method is worth anything, so it
-was done against a competent version of the alternative --- restarted simplexes,
-normalised coordinates, and a numerical Hessian with auto-scaled steps --- not a
+was done against a competent version of the alternative (restarted simplexes,
+normalised coordinates, and a numerical Hessian with auto-scaled steps), not a
 straw man. It has three different answers, and Figure~\ref{fig:four} shows all
 three rather than only the flattering one.
 
@@ -235,7 +236,7 @@ keeps both.}
 \label{fig:four}
 \end{figure}
 
-\paragraph{(a) On a clean problem, they agree --- and the fit is not the weak
+\paragraph{(a) On a clean problem, they agree, and the fit is not the weak
 link.} On formic acid all \zBaselineFormicNStarts{} random starts find the same
 minimum, agreeing on $J$ to $\zBaselineFormicJSpreadHz$\,Hz.
 
@@ -258,8 +259,8 @@ the curvature at the optimum \emph{is} the expected information, and we measure
 them to agree to $\zVsNestedCurvatureVsFisherRel$. Listing them as separate rows
 would suggest a corroboration that does not exist.
 
-What the table does say is stronger. Two fully Bayesian methods --- neither of
-which assumes the posterior is Gaussian --- land within
+What the table does say is stronger. Two fully Bayesian methods, neither of
+which assumes the posterior is Gaussian, land within
 \zVsNestedRelDifferencePct\,\% of the asymptotic bound. That means the posterior
 \emph{is} Gaussian to about that accuracy on this problem, which explains why
 the simple fit ties here, and predicts exactly where it will stop working:
@@ -269,8 +270,8 @@ wherever the posterior is not Gaussian. That is cases (b) and (c).
 nothing.} On methanol the proton--proton coupling inside the methyl group is
 invisible. The fit does not fail. It returns
 \JHH{} $= \zBaselineMethanolJHhFit$\,Hz with a 95\,\% interval of
-$\zBaselineMethanolJHhWidthNineFiveHz$\,Hz --- on a prior only
-\zBaselineMethanolJHhPriorHz\,Hz wide --- and prints that as an error bar.
+$\zBaselineMethanolJHhWidthNineFiveHz$\,Hz on a prior only
+\zBaselineMethanolJHhPriorHz\,Hz wide, and prints that as an error bar.
 Across \zBaselineMethanolNStarts{} starts the fitted value fills the entire
 prior. The network instead reports a shrinkage of
 \zLibraryMethanolShrinkageJHh{} on this parameter, which is to say: the
@@ -290,8 +291,8 @@ exactly degenerate.
 
 \item \textbf{A bug in our own observation model, found by looking for
 trouble.} A peak list merges lines that are too close to resolve. We had been
-merging at the model's \emph{own} linewidth, which moves with the fitted $T_2$
---- so a $0.1$\,s change in $T_2$ could merge three lines into one and move the
+merging at the model's \emph{own} linewidth, which moves with the fitted $T_2$,
+so a $0.1$\,s change in $T_2$ could merge three lines into one and move the
 log-likelihood by $5\times10^5$. On real data the peak list is read off the
 spectrum at a fixed instrument resolution, long before $T_2$ is known, so the
 merge threshold has to be an instrument constant. It now is. Fixing it made the
@@ -309,7 +310,7 @@ That points at the network's fit rather than at the physics.
 \item \textbf{The efficiency criterion needs re-stating.} The proposal sets a
 pass/fail threshold on sampling efficiency as a single number. Measured across
 \zEfficiencyNObs{} spectra from the same network and the same model, the usable
-fraction ranges from \zEfficiencyMin{} to \zEfficiencyMax{} --- a factor of
+fraction ranges from \zEfficiencyMin{} to \zEfficiencyMax{}, a factor of
 \zEfficiencySpread{}. It should be read over several spectra, not one.
 
 \item \textbf{A conclusion we had to withdraw.} An earlier version of the
@@ -336,7 +337,7 @@ narrowed what I should be claiming. Two points matter.
 First, some things I had implied were new are not. Cobas (Mestrelab) already
 has a network that extracts couplings from strongly coupled spectra with no
 starting guess, and already pairs it with a quantum-mechanical refinement
-stage. Two other recent papers do report uncertainties --- though what they
+stage. Two other recent papers do report uncertainties, though what they
 report is the spread across several independently trained networks, which
 measures whether the \emph{networks} agree, not what the \emph{spectrum}
 constrains. A perfectly flat direction would give several confident, identical,
@@ -346,7 +347,7 @@ Second, the closest work supports the case for doing this at zero field rather
 than undermining it. Cobas's four-spin paper states plainly that certain
 coupling combinations ``cannot be determined from the spectrum alone'' and
 resolves them by adopting an ordering convention. And the way that literature
-breaks the labelling degeneracy is by ranking nuclei by chemical shift --- which
+breaks the labelling degeneracy is by ranking nuclei by chemical shift, which
 is precisely the tool zero field does not have. So the surviving claim is
 narrower than ``nobody has done this'', and better supported: a calibrated
 posterior from a single spectrum, in the one regime where the standard remedy
@@ -363,7 +364,7 @@ non-zero if any document has drifted, so it can run in CI.
 
 This was not always true, and the cost was visible in an audit: a stale table, a
 stale eigenvalue list, an error bar off by a factor of $1.3$, and one
-\emph{reversed} conclusion --- all because four documents each copied the same
+\emph{reversed} conclusion, all because four documents each copied the same
 run logs by hand.
 
 \section{What I need next}
@@ -374,7 +375,7 @@ Three things are essential:
 
 \begin{enumerate}
 \item \textbf{The spectra}, ideally raw FIDs. Which molecules does not matter
-      --- adding one is a table of couplings and a training run --- so
+      (adding one is a table of couplings and a training run), so
       whatever is best documented is the right choice.
 \item \textbf{The preparation protocol} for each dataset (thermal drop,
       adiabatic ramp, or pulses, with flip angles and axes). This sets the
@@ -385,7 +386,7 @@ Three things are essential:
 \end{enumerate}
 
 Three more would each remove an assumption: the resolution of the peak-fitting
-step (see the merge bug above --- I would rather have the instrument's number
+step (see the merge bug above; I would rather have the instrument's number
 than a guess), the residual field if it was logged, and the magnetometer
 bandwidth and any hardware filter. Any previously fitted couplings would let me
 compare against the existing fitter on the same data rather than only against
