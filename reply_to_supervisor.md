@@ -31,7 +31,7 @@ that paper.
 
 ---
 
-**Subject:** Re: report, test results and where I have got to
+Subject: Re: report, test results and where I have got to
 
 Dear Dima,
 
@@ -45,31 +45,19 @@ tested it, because every spectrum it had ever seen came from the same simulator
 it fits with. So I built three spectra that no parameter value can reproduce.
 It catches one of the three.
 
-**Field drift during acquisition is caught, loudly.** At 1 nT the fit quality
-degrades by a factor of 28, the consistency check falls to a third of its clean
-value, and the coupling stays inside its error bar because the error bar widens
-to match. This is the behaviour I had assumed all along.
+1. Field drift during acquisition of 1 nT. Noticed. The fit quality measure
+goes from about 1 on clean data to 28, the consistency check drops to a third
+of its clean value, and the reported coupling stays inside its error bar.
 
-**Two protons 2 Hz away from equivalent is not caught.** That is the scale of
-the residual dipolar couplings you would expect in a partially aligned
-aromatic. The reported coupling moves by 12 mHz, about nine times its own error
-bar, and every diagnostic sits exactly where it was on clean data. Breaking the
-equivalence does produce a signature, lines near J and J/2 that the selection
-rule forbids in the correct model. But they come out four orders of magnitude
-below the main multiplet, and my peak list keeps only the strongest few, so I
-discard the evidence before the fit ever sees it.
+2. Two protons 2 Hz away from equivalent. Not noticed. The reported coupling
+moves by 12 mHz, which is about nine times its own error bar, and every check
+reads the same as it does on clean data.
 
-**A mis-scaled frequency axis is not caught, and cannot be.** An error of one
-part in 10^4 moves the coupling by 22 mHz with every diagnostic flat. This one
-is provable rather than merely observed: scaling all frequencies by 1+eps is
-reproduced exactly by scaling J and the field up and T2 down, and the two
-predictions agree to under a millionth of the measurement noise. No residual
-survives for any test to find.
+3. Frequency axis off by one part in 10,000. Not noticed. The reported coupling
+moves by 22 mHz, and again every check reads the same as on clean data.
 
-So the method notices model errors that point away from its parameters and
-misses the ones that point along them, which is the wrong way round. The second
-kind get absorbed into a plausible-looking parameter value instead of showing
-up as a bad fit.
+Figure 6 of the attached report shows all three, and the section next to it
+explains why two of them slip through.
 
 One other thing worth passing on, whatever happens to this project. Reading
 Wilzewski et al. properly, their benzene 1J_CH is 158.363(1) Hz against a
