@@ -25,6 +25,18 @@ and a supervisor can respond to the first with help. If you want the stronger
 version, that the project itself is not worth pursuing by anyone, say so and I
 will change it. The numbers below do not settle that question either way.
 
+On the AI paragraph: the news story is about **citation and inflated novelty**,
+not about the mathematics being wrong. Miller's complaint is that his 2016
+argument was reused without credit and the problems were announced as having
+"seen no progress for at least a decade" when they had. So the paragraph now
+cites the failure the story is actually about, and pairs it with this project's
+own small version of it, which is documented in `literature_notes.md`: three
+claims that were not novel (ref [20] already needs no starting guess, already
+seeds a classical fitter, and two of the five papers do report uncertainty),
+plus ref [20] carrying no author and the wrong journal. Do not send this
+paragraph without being comfortable saying that out loud, because it is a real
+admission. It is also the part Dima is most likely to respect.
+
 The results quoted are from `python misspecification.py`, recorded in
 `results.json` and plotted in Figure 6. The Wilzewski values are from Table I of
 that paper.
@@ -78,14 +90,21 @@ derive or defend on my own, and I am not comfortable building further on ground
 I cannot stand on. So I do not think this is the right thing for me to be
 working on at the moment, at least not in this form.
 
-That connects to the other thing I wanted to raise. I no longer think I should
-put the group's real data through this. Recent discussion about AI in
-mathematics research has made me more careful about it. These tools produce work
-that looks rigorous and is sometimes confidently wrong, and the test above is a
-small and concrete example: a coupling wrong by nine times its own error bar
-with every check reporting clean, which I only found because you asked a
-question that made me go looking. I would rather not take that risk with your
-group's unpublished data.
+That connects to the other thing I wanted to raise. I would rather not put the
+group's real data through this. The recent case of the AI-generated mathematics
+results has made me more careful. As I understand it, the main complaint was not
+that the mathematics was wrong but that it reused existing results without
+citing them, and was announced as more novel than it was.
+
+This project turned out to have a smaller version of the same problem. When I
+finally read the five closest papers in full, three things I had been describing
+as new were already published, and my own reference list had the wrong journal
+and no author for the paper closest to mine. I only found that by reading the
+papers. Nothing in the work itself flagged it.
+
+On my own project that is embarrassing and fixable. With your group's
+unpublished data it would be your name on it as well as mine, and I would rather
+not take that risk.
 
 Thank you for your support, and for your patience with a project that changed
 shape several times. The questions in your last email did more for it than
